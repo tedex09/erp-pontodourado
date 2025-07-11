@@ -1,0 +1,108 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import connectMongo from '@/lib/mongodb';
+import Sale from '@/lib/models/Sale';
+import Product from '@/lib/models/Product';
+import Customer from '@/lib/models/Customer';
+
+export async function GET(req: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    await connectMongo();
+    
+    const { searchParams } = new URL(req.url);
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
+    const sellerId = searchParams.get('sellerId');
+    
+    let query: any = {};
+    
+    if (startDate && endDate) {
+      query.createdAt = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate),
+      };
+    }
+    
+    if (sellerId) {
+      query.sellerId = sellerId;
+    }
+    
+    const sales = await Sale.find(query)
+      .populate('items.productId')
+      .populate('customerId')
+      .sort({ createdAt: -1 });
+    
+    return NextResponse.json(sales);
+  } catch (error) {
+    console.error('Sales API error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || !['admin', 'vendedor', 'caixa'].includes(session.user.role)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    await connectMongo();
+    
+    const data = await req.json();
+    
+    // Verify stock availability
+    for (const item of data.items) {
+      const product = await Product.findById(item.productId);
+      if (!product || product.stock < item.quantity) {
+        return NextResponse.json(
+          { error: `Estoque insuficiente para ${product?.name || 'produto'}` },
+          { status: 400 }
+        );
+      }
+    }
+    
+    // Create sale
+    const sale = new Sale({
+      ...data,
+      sellerId: session.user.id,
+      sellerName: session.user.name,
+    });
+    
+    await sale.save();
+    
+    // Update product stock
+    for (const item of data.items) {
+      await Product.findByIdAndUpdate(
+        item.productId,
+        { $inc: { stock: -item.quantity } }
+      );
+    }
+    
+    // Update customer purchases
+    if (data.customerId) {
+      await Customer.findByIdAndUpdate(
+        data.customerId,
+        {
+          $push: {
+            purchases: {
+              saleId: sale._id,
+              date: new Date(),
+              amount: data.total,
+            },
+          },
+        }
+      );
+    }
+    
+    return NextResponse.json(sale, { status: 201 });
+  } catch (error) {
+    console.error('Create sale error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
