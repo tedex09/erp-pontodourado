@@ -69,7 +69,16 @@ export async function POST(req: NextRequest) {
     
     // Create sale
     const sale = new Sale({
-      ...data,
+      items: data.items,
+      customerId: data.customerId,
+      customerName: data.customerName,
+      subtotal: data.subtotal,
+      discount: data.discount || 0,
+      addition: data.addition || 0,
+      total: data.total,
+      paymentMethods: data.paymentMethods || [],
+      fees: data.fees || 0,
+      finalAmount: data.finalAmount || data.total,
       sellerId: session.user.id,
       sellerName: session.user.name,
     });
@@ -93,7 +102,7 @@ export async function POST(req: NextRequest) {
             purchases: {
               saleId: sale._id,
               date: new Date(),
-              amount: data.total,
+              amount: data.finalAmount || data.total,
             },
           },
         }
