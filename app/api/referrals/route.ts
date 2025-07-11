@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import connectMongo from '@/lib/mongodb';
-import Referral from '@/lib/models/Referral';
+import { Referral } from '@/lib/models';
 
 export async function GET(req: NextRequest) {
   try {

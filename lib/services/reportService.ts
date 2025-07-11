@@ -1,7 +1,5 @@
 import connectMongo from '@/lib/mongodb';
-import Sale from '@/lib/models/Sale';
-import Product from '@/lib/models/Product';
-import Customer from '@/lib/models/Customer';
+import { Sale, Product, Customer } from '@/lib/models';
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
 
 export interface SalesReportData {

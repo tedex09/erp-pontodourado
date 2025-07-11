@@ -1,6 +1,5 @@
 import connectMongo from '@/lib/mongodb';
-import Product from '@/lib/models/Product';
-import StockMovement from '@/lib/models/StockMovement';
+import { Product, StockMovement } from '@/lib/models';
 
 export interface StockMovementData {
   productId: string;

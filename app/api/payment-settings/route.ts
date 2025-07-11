@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import connectMongo from '@/lib/mongodb';
-import PaymentSettings from '@/lib/models/PaymentSettings';
+import { PaymentSettings } from '@/lib/models';
 
 export async function GET(req: NextRequest) {
   try {
@@ -18,6 +18,7 @@ export async function GET(req: NextRequest) {
     if (!settings) {
       settings = new PaymentSettings({
         updatedBy: session.user.id,
+        feeResponsibility: 'customer', // Ensure default value
       });
       await settings.save();
     }
@@ -46,10 +47,12 @@ export async function PUT(req: NextRequest) {
       settings = new PaymentSettings({
         ...data,
         updatedBy: session.user.id,
+        feeResponsibility: data.feeResponsibility || 'customer', // Ensure valid value
       });
     } else {
       Object.assign(settings, data);
       settings.updatedBy = session.user.id;
+      settings.feeResponsibility = data.feeResponsibility || 'customer'; // Ensure valid value
     }
     
     await settings.save();

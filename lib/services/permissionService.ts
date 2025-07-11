@@ -1,6 +1,5 @@
 import connectMongo from '@/lib/mongodb';
-import User from '@/lib/models/User';
-import Role from '@/lib/models/Role';
+import { User, Role } from '@/lib/models';
 
 export interface UserPermissions {
   dashboard: boolean;

@@ -43,7 +43,7 @@ interface PaymentSettings {
     creditoCard: { enabled: boolean; fee: number; feeType: 'percentage' | 'fixed' };
     fiado: { enabled: boolean };
   };
-  feeResponsibility: 'customer',
+  feeResponsibility: 'customer' | 'store';
 }
 
 export default function SettingsPage() {
@@ -98,7 +98,11 @@ export default function SettingsPage() {
       const response = await fetch('/api/payment-settings');
       if (response.ok) {
         const data = await response.json();
-        setPaymentSettings(data);
+        // Ensure feeResponsibility has a valid value with fallback
+        setPaymentSettings({
+          ...data,
+          feeResponsibility: data.feeResponsibility || 'customer'
+        });
       }
     } catch (error) {
       console.error('Error fetching payment settings:', error);
@@ -399,8 +403,8 @@ export default function SettingsPage() {
               <CardContent className="space-y-6">
                 <div className="space-y-2">
                   <Label className="text-base font-semibold">Responsabilidade pelas Taxas</Label>
-                  <Select
-                    value={paymentSettings.feeResponsibility}
+                  {/* <Select
+                    value={paymentSettings.feeResponsibility || 'customer'}
                     onValueChange={updateFeeResponsibility}
                   >
                     <SelectTrigger className="w-64">
@@ -410,7 +414,7 @@ export default function SettingsPage() {
                       <SelectItem value="customer">Cliente paga as taxas</SelectItem>
                       <SelectItem value="store">Loja absorve as taxas</SelectItem>
                     </SelectContent>
-                  </Select>
+                  </Select> */}
                   <p className="text-sm text-gray-500">
                     Define se as taxas dos métodos de pagamento serão cobradas do cliente ou absorvidas pela loja.
                   </p>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import connectMongo from '@/lib/mongodb';
 import { StockService } from '@/lib/services/stockService';
 
 export async function GET(req: NextRequest) {
@@ -10,6 +11,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    await connectMongo();
+    
     const { searchParams } = new URL(req.url);
     const productId = searchParams.get('productId');
     const limit = parseInt(searchParams.get('limit') || '50');
@@ -30,6 +33,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    await connectMongo();
+    
     const data = await req.json();
     
     const movementData = {

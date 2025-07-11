@@ -639,8 +639,12 @@ export default function PDVPage() {
                       <Label className="text-sm font-medium">Cliente</Label>
                       <div className="flex space-x-2">
                         <Select
-                          value={customer?.id || ''}
+                          value={customer?.id || 'none'}
                           onValueChange={(value) => {
+                            if (value === 'none') {
+                              setCustomer(null);
+                              return;
+                            }
                             const selectedCustomer = customers.find(c => c._id === value);
                             setCustomer(selectedCustomer ? {
                               id: selectedCustomer._id,
@@ -654,7 +658,7 @@ export default function PDVPage() {
                             <SelectValue placeholder="Selecionar cliente" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">Sem cliente</SelectItem>
+                            <SelectItem value="none">Sem cliente</SelectItem>
                             {customers.map((c) => (
                               <SelectItem key={c._id} value={c._id}>
                                 {c.name} - {c.phone}

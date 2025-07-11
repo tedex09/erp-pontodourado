@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { registerModels } from './models';
 
 const MONGODB_URI = process.env.MONGODB_URI!;
 
@@ -29,6 +30,9 @@ async function connectMongo() {
 
   try {
     cached.conn = await cached.promise;
+    
+    // Ensure all models are registered
+    registerModels();
   } catch (e) {
     cached.promise = null;
     throw e;

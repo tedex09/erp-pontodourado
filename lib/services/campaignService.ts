@@ -1,7 +1,5 @@
 import connectMongo from '@/lib/mongodb';
-import Customer from '@/lib/models/Customer';
-import Sale from '@/lib/models/Sale';
-import Campaign from '@/lib/models/Campaign';
+import { Customer, Sale, Campaign } from '@/lib/models';
 import { startOfMonth, endOfMonth } from 'date-fns';
 
 export interface BirthdayCustomer {
