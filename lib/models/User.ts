@@ -7,6 +7,19 @@ export interface IUser {
   email: string;
   password: string;
   role: 'admin' | 'vendedor' | 'caixa' | 'estoque';
+  roleId?: string;
+  customPermissions?: {
+    dashboard: boolean;
+    pdv: boolean;
+    products: boolean;
+    inventory: boolean;
+    reports: boolean;
+    customers: boolean;
+    campaigns: boolean;
+    settings: boolean;
+    employees: boolean;
+    categories: boolean;
+  };
   active: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -35,6 +48,22 @@ const userSchema = new mongoose.Schema<IUser>(
       type: String,
       enum: ['admin', 'vendedor', 'caixa', 'estoque'],
       default: 'vendedor',
+    },
+    roleId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Role',
+    },
+    customPermissions: {
+      dashboard: { type: Boolean, default: true },
+      pdv: { type: Boolean, default: false },
+      products: { type: Boolean, default: false },
+      inventory: { type: Boolean, default: false },
+      reports: { type: Boolean, default: false },
+      customers: { type: Boolean, default: false },
+      campaigns: { type: Boolean, default: false },
+      settings: { type: Boolean, default: false },
+      employees: { type: Boolean, default: false },
+      categories: { type: Boolean, default: false },
     },
     active: {
       type: Boolean,

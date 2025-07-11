@@ -5,6 +5,7 @@ export interface ICategory {
   name: string;
   icon: string;
   description?: string;
+  defaultMargin: number;
   active: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -26,6 +27,12 @@ const categorySchema = new mongoose.Schema<ICategory>(
     description: {
       type: String,
       trim: true,
+    },
+    defaultMargin: {
+      type: Number,
+      required: true,
+      default: 300, // 300% margin
+      min: 0,
     },
     active: {
       type: Boolean,

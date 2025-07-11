@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import Link from 'next/link';
 import { Plus, Search, User, Phone, Mail, Calendar, ShoppingBag } from 'lucide-react';
 import { showToast } from '@/components/ui/toast';
 
@@ -331,6 +332,24 @@ export default function CustomersPage() {
                         Última compra: {formatDate(customer.purchases[customer.purchases.length - 1].date)}
                       </p>
                     )}
+                    
+                    <div className="mt-3 flex space-x-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleEdit(customer)}
+                        className="flex-1"
+                      >
+                        Editar
+                      </Button>
+                      {customer.purchases.length > 0 && (
+                        <Link href={`/customers/${customer._id}/history`}>
+                          <Button size="sm" variant="outline" className="flex-1">
+                            Ver Histórico
+                          </Button>
+                        </Link>
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>

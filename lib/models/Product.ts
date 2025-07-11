@@ -5,6 +5,7 @@ export interface IProduct {
   name: string;
   code: string;
   category: string;
+  categoryId: string;
   image?: string;
   costPrice: number;
   salePrice: number;
@@ -26,14 +27,20 @@ const productSchema = new mongoose.Schema<IProduct>(
     },
     code: {
       type: String,
-      required: true,
       unique: true,
       trim: true,
+      default: function () {
+        return Math.floor(10000 + Math.random() * 90000).toString();
+      },
     },
     category: {
       type: String,
       required: true,
       trim: true,
+    },
+    categoryId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Category',
     },
     image: {
       type: String,
@@ -80,10 +87,20 @@ const productSchema = new mongoose.Schema<IProduct>(
 );
 
 productSchema.pre('save', function (next) {
-  if (this.isModified('costPrice') || this.isModified('salePrice')) {
-    this.suggestedPrice = this.costPrice * 4; // 300% margin
-    this.margin = ((this.salePrice - this.costPrice) / this.costPrice) * 100;
+  // Garante que o código seja gerado se estiver vazio (fallback extra, apesar do default)
+  if (!this.code) {
+    this.code = Math.floor(10000 + Math.random() * 90000).toString();
   }
+
+  // Atualiza margem sempre que custo ou venda forem alterados
+  if (this.isModified('costPrice') || this.isModified('salePrice')) {
+    if (this.costPrice > 0) {
+      this.margin = ((this.salePrice - this.costPrice) / this.costPrice) * 100;
+    } else {
+      this.margin = 0;
+    }
+  }
+
   next();
 });
 

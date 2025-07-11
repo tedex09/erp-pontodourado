@@ -19,8 +19,11 @@ const navigation = [
   { name: 'PDV', href: '/pdv', icon: ShoppingCart, roles: ['admin', 'vendedor', 'caixa'] },
   { name: 'Clientes', href: '/customers', icon: Users, roles: ['admin', 'vendedor'] },
   { name: 'Produtos', href: '/products', icon: Package, roles: ['admin', 'vendedor', 'estoque'] },
+  { name: 'Categorias', href: '/categories', icon: Store, roles: ['admin'] },
   { name: 'Estoque', href: '/inventory', icon: Store, roles: ['admin', 'estoque'] },
+  { name: 'Campanhas', href: '/campaigns', icon: Users, roles: ['admin', 'vendedor'] },
   { name: 'Funcionários', href: '/employees', icon: UserCheck, roles: ['admin'] },
+  { name: 'Funções', href: '/roles', icon: UserCheck, roles: ['admin'] },
   { name: 'Relatórios', href: '/reports', icon: BarChart3, roles: ['admin'] },
   { name: 'Configurações', href: '/settings', icon: Settings, roles: ['admin'] },
 ];

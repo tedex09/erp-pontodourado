@@ -30,6 +30,7 @@ export default function CategoriesPage() {
     name: '',
     icon: '💎',
     description: '',
+    defaultMargin: 300,
   });
 
   const commonIcons = ['💎', '👑', '💍', '📿', '⌚', '👂', '🔗', '💄', '👜', '🎀', '✨', '🌟'];
@@ -129,6 +130,7 @@ export default function CategoriesPage() {
       name: '',
       icon: '💎',
       description: '',
+      defaultMargin: 300,
     });
   };
 
@@ -138,6 +140,7 @@ export default function CategoriesPage() {
       name: category.name,
       icon: category.icon,
       description: category.description || '',
+      defaultMargin: category.defaultMargin || 300,
     });
     setShowDialog(true);
   };
@@ -208,6 +211,23 @@ export default function CategoriesPage() {
                 />
               </div>
               
+              <div className="space-y-2">
+                <Label htmlFor="defaultMargin">Margem de Lucro Padrão (%)</Label>
+                <Input
+                  id="defaultMargin"
+                  type="number"
+                  min="0"
+                  max="1000"
+                  value={formData.defaultMargin}
+                  onChange={(e) => setFormData({ ...formData, defaultMargin: Number(e.target.value) })}
+                  required
+                />
+                <p className="text-sm text-gray-500">
+                  Esta margem será usada como padrão para produtos desta categoria.
+                  Exemplo: 300% significa que o preço sugerido será 4x o custo.
+                </p>
+              </div>
+              
               <div className="flex space-x-2">
                 <Button type="submit" disabled={loading} className="flex-1">
                   {loading ? 'Salvando...' : 'Salvar'}
@@ -264,6 +284,9 @@ export default function CategoriesPage() {
                           <p className="text-sm text-gray-500 mt-1">{category.description}</p>
                         )}
                       </div>
+                      <p className="text-sm text-indigo-600 font-medium mt-1">
+                        Margem padrão: {category.defaultMargin}%
+                      </p>
                     </div>
                   </div>
                   

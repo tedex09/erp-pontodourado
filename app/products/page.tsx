@@ -15,6 +15,7 @@ interface Product {
   name: string;
   code: string;
   category: string;
+  categoryId: string;
   image?: string;
   costPrice: number;
   salePrice: number;
@@ -26,25 +27,38 @@ interface Product {
   createdAt: string;
 }
 
+interface Category {
+  _id: string;
+  name: string;
+  icon: string;
+  defaultMargin: number;
+}
+
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showDialog, setShowDialog] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>('');
   
   const [formData, setFormData] = useState({
     name: '',
     code: '',
     category: '',
+    categoryId: '',
     costPrice: 0,
     salePrice: 0,
+    suggestedPrice: 0,
     stock: 0,
     minStock: 5,
   });
 
   useEffect(() => {
     fetchProducts();
+    fetchCategories();
   }, []);
 
   const fetchProducts = async () => {
@@ -56,6 +70,18 @@ export default function ProductsPage() {
       }
     } catch (error) {
       showToast.error('Erro ao carregar produtos');
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch('/api/categories');
+      if (response.ok) {
+        const data = await response.json();
+        setCategories(data);
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error);
     }
   };
 
@@ -81,13 +107,36 @@ export default function ProductsPage() {
     setLoading(true);
     
     try {
+      let imageUrl = '';
+      
+      // Upload image if selected
+      if (imageFile) {
+        const imageFormData = new FormData();
+        imageFormData.append('image', imageFile);
+        
+        const imageResponse = await fetch('/api/upload', {
+          method: 'POST',
+          body: imageFormData,
+        });
+        
+        if (imageResponse.ok) {
+          const imageData = await imageResponse.json();
+          imageUrl = imageData.url;
+        }
+      }
+      
       const url = editingProduct ? `/api/products/${editingProduct._id}` : '/api/products';
       const method = editingProduct ? 'PUT' : 'POST';
+      
+      const submitData = {
+        ...formData,
+        ...(imageUrl && { image: imageUrl }),
+      };
       
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(submitData),
       });
       
       if (response.ok) {
@@ -111,11 +160,15 @@ export default function ProductsPage() {
       name: '',
       code: '',
       category: '',
+      categoryId: '',
       costPrice: 0,
       salePrice: 0,
+      suggestedPrice: 0,
       stock: 0,
       minStock: 5,
     });
+    setImageFile(null);
+    setImagePreview('');
   };
 
   const handleEdit = (product: Product) => {
@@ -124,15 +177,72 @@ export default function ProductsPage() {
       name: product.name,
       code: product.code,
       category: product.category,
+      categoryId: product.categoryId || '',
       costPrice: product.costPrice,
       salePrice: product.salePrice,
+      suggestedPrice: product.suggestedPrice,
       stock: product.stock,
       minStock: product.minStock,
     });
+    setImagePreview(product.image || '');
     setShowDialog(true);
   };
 
-  const suggestedPrice = formData.costPrice * 4; // 300% margin
+  const handleCategoryChange = (categoryId: string) => {
+    const category = categories.find(c => c._id === categoryId);
+    if (category && formData.costPrice > 0) {
+      const suggestedPrice = formData.costPrice / (1 - (category.defaultMargin / 100));
+      setFormData(prev => ({
+        ...prev,
+        categoryId,
+        category: category.name,
+        suggestedPrice,
+        salePrice: suggestedPrice,
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        categoryId,
+        category: category?.name || '',
+      }));
+    }
+  };
+
+  const handleCostPriceChange = (costPrice: number) => {
+    const category = categories.find(c => c._id === formData.categoryId);
+    let suggestedPrice = 0;
+    
+    if (category && costPrice > 0) {
+      suggestedPrice = costPrice / (1 - (category.defaultMargin / 100));
+    }
+    
+    setFormData(prev => ({
+      ...prev,
+      costPrice,
+      suggestedPrice,
+      ...(suggestedPrice > 0 && { salePrice: suggestedPrice }),
+    }));
+  };
+
+  const handleSalePriceChange = (salePrice: number) => {
+    setFormData(prev => ({
+      ...prev,
+      salePrice,
+    }));
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const margin = formData.costPrice > 0 ? ((formData.salePrice - formData.costPrice) / formData.costPrice) * 100 : 0;
 
   return (
@@ -153,6 +263,26 @@ export default function ProductsPage() {
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="image">Imagem do Produto</Label>
+                <div className="flex items-center space-x-4">
+                  {imagePreview && (
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      className="w-20 h-20 object-cover rounded-lg border"
+                    />
+                  )}
+                  <Input
+                    id="image"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="flex-1"
+                  />
+                </div>
+              </div>
+              
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Nome</Label>
@@ -169,19 +299,27 @@ export default function ProductsPage() {
                     id="code"
                     value={formData.code}
                     onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                    required
+                    placeholder="Deixe vazio para gerar automaticamente"
                   />
                 </div>
               </div>
               
               <div className="space-y-2">
                 <Label htmlFor="category">Categoria</Label>
-                <Input
+                <select
                   id="category"
-                  value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  value={formData.categoryId}
+                  onChange={(e) => handleCategoryChange(e.target.value)}
+                  className="w-full p-2 border rounded-md"
                   required
-                />
+                >
+                  <option value="">Selecione uma categoria</option>
+                  {categories.map((category) => (
+                    <option key={category._id} value={category._id}>
+                      {category.icon} {category.name} (Margem: {category.defaultMargin}%)
+                    </option>
+                  ))}
+                </select>
               </div>
               
               <div className="grid grid-cols-2 gap-4">
@@ -192,7 +330,7 @@ export default function ProductsPage() {
                     type="number"
                     step="0.01"
                     value={formData.costPrice}
-                    onChange={(e) => setFormData({ ...formData, costPrice: Number(e.target.value) })}
+                    onChange={(e) => handleCostPriceChange(Number(e.target.value))}
                     required
                   />
                 </div>
@@ -203,7 +341,7 @@ export default function ProductsPage() {
                     type="number"
                     step="0.01"
                     value={formData.salePrice}
-                    onChange={(e) => setFormData({ ...formData, salePrice: Number(e.target.value) })}
+                    onChange={(e) => handleSalePriceChange(Number(e.target.value))}
                     required
                   />
                 </div>
@@ -211,9 +349,9 @@ export default function ProductsPage() {
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Preço Sugerido (300%)</Label>
+                  <Label>Preço Sugerido</Label>
                   <div className="p-2 bg-gray-50 rounded border">
-                    R$ {suggestedPrice.toFixed(2)}
+                    R$ {formData.suggestedPrice.toFixed(2)}
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -308,6 +446,14 @@ export default function ProductsPage() {
                       </Badge>
                     </div>
                   </div>
+                  
+                  {product.image && (
+                    <img
+                      src={product.image}
+                      alt={product.name}
+                      className="w-full h-32 object-cover rounded-md mb-3"
+                    />
+                  )}
                   
                   <div className="space-y-2 mb-4">
                     <div className="flex justify-between">
