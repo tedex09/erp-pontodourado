@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
+import { useThemeStore } from '@/store/useThemeStore';
 import {
   Home,
   ShoppingCart,
@@ -35,6 +36,7 @@ const navigation = [
 export default function Sidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
+  const { companyName } = useThemeStore();
   
   const userRole = session?.user?.role || 'vendedor';
   
@@ -49,7 +51,7 @@ export default function Sidebar() {
           <div className="flex items-center flex-shrink-0 px-4">
             <Package className="h-8 w-8 text-indigo-600" />
             <span className="ml-2 text-lg font-semibold text-gray-900">
-              Bijuterias
+              {companyName}
             </span>
           </div>
           

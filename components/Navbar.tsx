@@ -3,9 +3,11 @@
 import { useSession, signOut } from 'next-auth/react';
 import { User, LogOut, Menu } from 'lucide-react';
 import { Button } from './ui/button';
+import { useThemeStore } from '@/store/useThemeStore';
 
 export default function Navbar() {
   const { data: session } = useSession();
+  const { companyName } = useThemeStore();
   
   return (
     <nav className="bg-white shadow-sm border-b border-gray-200">
@@ -16,7 +18,7 @@ export default function Navbar() {
               <Menu className="h-6 w-6" />
             </Button>
             <h1 className="text-xl font-semibold text-gray-900 ml-4">
-              Loja de Bijuterias
+              {companyName}
             </h1>
           </div>
           

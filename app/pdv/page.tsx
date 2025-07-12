@@ -10,6 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { 
   Search, 
   Plus, 
@@ -23,10 +24,13 @@ import {
   DollarSign,
   Calculator,
   Filter,
-  Package
+  Package,
+  ArrowLeft
 } from 'lucide-react';
 import { showToast } from '@/components/ui/toast';
 import { debounce } from 'lodash';
+import { filterByTextIgnoreAccents } from '@/lib/utils/textUtils';
+import { useRouter } from 'next/navigation';
 
 interface Product {
   _id: string;
@@ -65,6 +69,7 @@ interface PaymentSettings {
 }
 
 export default function PDVPage() {
+  const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -88,6 +93,7 @@ export default function PDVPage() {
   const [paymentForm, setPaymentForm] = useState({
     type: 'dinheiro' as 'dinheiro' | 'pix' | 'pixQrCode' | 'debitoCard' | 'creditoCard' | 'fiado',
     amount: 0,
+    receivedAmount: 0, // Novo campo para valor recebido
   });
 
   const [discountForm, setDiscountForm] = useState({
@@ -191,22 +197,21 @@ export default function PDVPage() {
     }
   };
 
-  // Debounced search function
+  // Busca com filtro melhorado (ignora acentos)
   const debouncedSearch = useCallback(
     debounce((term: string, category: string) => {
       let filtered = allProducts;
       
-      if (term.trim()) {
+      // Filtrar por categoria primeiro
+      if (category && category !== 'all') {
         filtered = filtered.filter(product =>
-          product.name.toLowerCase().includes(term.toLowerCase()) ||
-          product.code.toLowerCase().includes(term.toLowerCase())
+          product.categoryId === category
         );
       }
       
-      if (category && category !== 'all') {
-        filtered = filtered.filter(product =>
-          product.category === category || product.categoryId === category
-        );
+      // Depois filtrar por termo de busca (ignorando acentos)
+      if (term.trim()) {
+        filtered = filterByTextIgnoreAccents(filtered, term, ['name', 'code']);
       }
       
       setProducts(filtered);
@@ -287,6 +292,17 @@ export default function PDVPage() {
     return { fee, chargeAmount };
   };
 
+  // Calcular troco para pagamento em dinheiro
+  const calculateChange = () => {
+    if (paymentForm.type === 'dinheiro' && paymentForm.receivedAmount > 0) {
+      const total = getTotal();
+      const remainingAmount = total - paymentMethods.reduce((sum, p) => sum + p.amount, 0);
+      const change = paymentForm.receivedAmount - remainingAmount;
+      return change > 0 ? change : 0;
+    }
+    return 0;
+  };
+
   const handleAddPayment = () => {
     if (paymentForm.amount <= 0) {
       showToast.error('Valor deve ser maior que zero');
@@ -294,7 +310,7 @@ export default function PDVPage() {
     }
 
     const remainingAmount = getTotal() - paymentMethods.reduce((sum, p) => sum + p.amount, 0);
-    if (paymentForm.amount > remainingAmount) {
+    if (paymentForm.amount > remainingAmount && paymentForm.type !== 'dinheiro') {
       showToast.error('Valor excede o restante a pagar');
       return;
     }
@@ -308,7 +324,7 @@ export default function PDVPage() {
       chargeAmount,
     });
 
-    setPaymentForm({ type: 'dinheiro', amount: 0 });
+    setPaymentForm({ type: 'dinheiro', amount: 0, receivedAmount: 0 });
     setShowPaymentDialog(false);
   };
 
@@ -420,330 +436,487 @@ export default function PDVPage() {
     }).format(value);
   };
 
+  const change = calculateChange();
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <ShoppingCart className="h-5 w-5 text-gray-500" />
-          <Badge variant="secondary">{cart.length} itens</Badge>
+    <div className="min-h-screen bg-gray-50">
+      {/* Mobile Header */}
+      <div className="md:hidden sticky top-0 z-40 bg-white border-b border-gray-200 px-4 py-3">
+        <div className="flex items-center justify-between">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push('/')}
+            className="flex items-center space-x-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span>Voltar</span>
+          </Button>
+          <h1 className="text-lg font-semibold text-gray-900">PDV</h1>
+          <div className="flex items-center space-x-2">
+            <ShoppingCart className="h-5 w-5 text-gray-500" />
+            <Badge variant="secondary">{cart.length}</Badge>
+          </div>
         </div>
       </div>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Products Section */}
-        <div className="lg:col-span-2 space-y-4">
-          <Card>
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg">Produtos</CardTitle>
-              <CardDescription>
-                Busque e adicione produtos ao carrinho
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex space-x-2">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input
-                      placeholder="Buscar por nome ou código..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
 
-                <div className="flex items-center space-x-2">
-                  <Filter className="h-4 w-4 text-gray-500" />
-                  <Select value={selectedCategory || 'all'} onValueChange={setSelectedCategory}>
-                    <SelectTrigger className="w-48">
-                      <SelectValue placeholder="Filtrar por categoria" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todas as categorias</SelectItem>
-                      {categories.map((category) => (
-                        <SelectItem key={category._id} value={category._id}>
-                          {category.icon} {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {selectedCategory && selectedCategory !== 'all' && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setSelectedCategory('all')}
-                    >
-                      Limpar
-                    </Button>
-                  )}
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-96 overflow-y-auto mt-4">
-                {products.map((product) => (
-                  <div
-                    key={product._id}
-                    className="border rounded-lg p-3 hover:shadow-md transition-shadow cursor-pointer bg-white"
-                    onClick={() => handleAddToCart(product)}
-                  >
-                    {product.image ? (
-                      <img
-                        src={product.image}
-                        alt={product.name}
-                        className="w-full h-16 object-cover rounded-md mb-2"
+      {/* Desktop Header */}
+      <div className="hidden md:block bg-white shadow-sm border-b border-gray-200 px-4 py-3">
+        <div className="flex items-center justify-between">
+          <Button
+            variant="outline"
+            onClick={() => router.push('/')}
+            className="flex items-center space-x-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span>Voltar</span>
+          </Button>
+          <h1 className="text-xl font-semibold text-gray-900">
+            PDV - Ponto de Venda
+          </h1>
+          <div className="flex items-center space-x-2">
+            <ShoppingCart className="h-5 w-5 text-gray-500" />
+            <Badge variant="secondary">{cart.length} itens</Badge>
+          </div>
+        </div>
+      </div>
+
+      <div className="p-4 pb-20 md:pb-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Products Section */}
+          <div className="lg:col-span-2 space-y-4">
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg">Produtos</CardTitle>
+                <CardDescription>
+                  Busque e adicione produtos ao carrinho
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input
+                        placeholder="Buscar por nome ou código..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-10 h-12 md:h-10"
                       />
-                    ) : (
-                      <div className="w-full h-16 bg-gray-100 rounded-md mb-2 flex items-center justify-center">
-                        <Package className="h-6 w-6 text-gray-400" />
-                      </div>
-                    )}
-                    <div className="space-y-1">
-                      <div className="flex justify-between items-start">
-                        <h3 className="font-medium text-xs text-gray-900 line-clamp-2 leading-tight">
-                          {product.name}
-                        </h3>
-                        <Badge variant={product.stock > 0 ? 'default' : 'destructive'} className="text-xs px-1 py-0">
-                          {product.stock}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-gray-500">{product.code}</p>
-                      <p className="text-sm font-bold text-green-600">
-                        {formatCurrency(product.salePrice)}
-                      </p>
                     </div>
                   </div>
-                ))}
-              </div>
-              
-              {products.length === 0 && (
-                <div className="text-center py-8">
-                  <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500">Nenhum produto encontrado</p>
+
+                  <div className="flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-2">
+                    <Filter className="h-4 w-4 text-gray-500" />
+                    <Select value={selectedCategory || 'all'} onValueChange={setSelectedCategory}>
+                      <SelectTrigger className="w-full md:w-48 h-12 md:h-10">
+                        <SelectValue placeholder="Filtrar por categoria" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas as categorias</SelectItem>
+                        {categories.map((category) => (
+                          <SelectItem key={category._id} value={category._id}>
+                            {category.icon} {category.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {selectedCategory && selectedCategory !== 'all' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedCategory('all')}
+                        className="h-12 md:h-10"
+                      >
+                        Limpar
+                      </Button>
+                    )}
+                  </div>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-        
-        {/* Cart Section */}
-        <div className="space-y-4">
-          <Card>
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg">Carrinho</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {cart.length === 0 ? (
-                <p className="text-center text-gray-500 py-8">
-                  Carrinho vazio
-                </p>
-              ) : (
-                <div className="space-y-4">
-                  <div className="max-h-64 overflow-y-auto space-y-3">
-                    {cart.map((item) => (
-                      <div key={item.id} className="border rounded-lg p-3 bg-gray-50">
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex-1">
-                            <h4 className="font-medium text-sm">{item.name}</h4>
-                            <p className="text-xs text-gray-500">
-                              {formatCurrency(item.price)} cada
-                            </p>
-                            {item.discount > 0 && (
-                              <p className="text-xs text-green-600">
-                                Desconto: {item.discountType === 'percentage' ? `${item.discount}%` : formatCurrency(item.discount)}
+                
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-96 overflow-y-auto mt-4">
+                  {products.map((product) => (
+                    <div
+                      key={product._id}
+                      className="border rounded-lg p-3 hover:shadow-md transition-shadow cursor-pointer bg-white touch-button"
+                      onClick={() => handleAddToCart(product)}
+                    >
+                      {product.image ? (
+                        <img
+                          src={product.image}
+                          alt={product.name}
+                          className="w-full h-16 object-cover rounded-md mb-2"
+                        />
+                      ) : (
+                        <div className="w-full h-16 bg-gray-100 rounded-md mb-2 flex items-center justify-center">
+                          <Package className="h-6 w-6 text-gray-400" />
+                        </div>
+                      )}
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-start">
+                          <h3 className="font-medium text-xs text-gray-900 line-clamp-2 leading-tight">
+                            {product.name}
+                          </h3>
+                          <Badge variant={product.stock > 0 ? 'default' : 'destructive'} className="text-xs px-1 py-0">
+                            {product.stock}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-gray-500">{product.code}</p>
+                        <p className="text-sm font-bold text-green-600">
+                          {formatCurrency(product.salePrice)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                {products.length === 0 && (
+                  <div className="text-center py-8">
+                    <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500">Nenhum produto encontrado</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+          
+          {/* Cart Section */}
+          <div className="space-y-4">
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg">Carrinho</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {cart.length === 0 ? (
+                  <p className="text-center text-gray-500 py-8">
+                    Carrinho vazio
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="max-h-64 overflow-y-auto space-y-3">
+                      {cart.map((item) => (
+                        <div key={item.id} className="border rounded-lg p-3 bg-gray-50">
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex-1">
+                              <h4 className="font-medium text-sm">{item.name}</h4>
+                              <p className="text-xs text-gray-500">
+                                {formatCurrency(item.price)} cada
                               </p>
-                            )}
+                              {item.discount > 0 && (
+                                <p className="text-xs text-green-600">
+                                  Desconto: {item.discountType === 'percentage' ? `${item.discount}%` : formatCurrency(item.discount)}
+                                </p>
+                              )}
+                            </div>
+                            
+                            <div className="flex items-center space-x-1">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                className="h-8 w-8 p-0 touch-button"
+                              >
+                                <Minus className="h-3 w-3" />
+                              </Button>
+                              <span className="w-8 text-center text-sm">
+                                {item.quantity}
+                              </span>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                disabled={item.quantity >= item.stock}
+                                className="h-8 w-8 p-0 touch-button"
+                              >
+                                <Plus className="h-3 w-3" />
+                              </Button>
+                            </div>
                           </div>
                           
-                          <div className="flex items-center space-x-1">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                              className="h-6 w-6 p-0"
-                            >
-                              <Minus className="h-3 w-3" />
-                            </Button>
-                            <span className="w-8 text-center text-sm">
-                              {item.quantity}
+                          <div className="flex justify-between items-center">
+                            <div className="flex space-x-1">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setSelectedItemForDiscount(item.id);
+                                  setDiscountForm({ amount: item.discount, type: item.discountType });
+                                  setShowDiscountDialog(true);
+                                }}
+                                className="h-8 px-2 touch-button"
+                              >
+                                <Percent className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => removeFromCart(item.id)}
+                                className="h-8 px-2 touch-button"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                            <span className="font-medium text-sm">
+                              {formatCurrency((item.price * item.quantity) - (item.discountType === 'percentage' 
+                                ? (item.price * item.quantity * item.discount) / 100 
+                                : item.discount))}
                             </span>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                              disabled={item.quantity >= item.stock}
-                              className="h-6 w-6 p-0"
-                            >
-                              <Plus className="h-3 w-3" />
-                            </Button>
                           </div>
                         </div>
-                        
-                        <div className="flex justify-between items-center">
-                          <div className="flex space-x-1">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                setSelectedItemForDiscount(item.id);
-                                setDiscountForm({ amount: item.discount, type: item.discountType });
-                                setShowDiscountDialog(true);
-                              }}
-                              className="h-6 px-2"
-                            >
-                              <Percent className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => removeFromCart(item.id)}
-                              className="h-6 px-2"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                          <span className="font-medium text-sm">
-                            {formatCurrency((item.price * item.quantity) - (item.discountType === 'percentage' 
-                              ? (item.price * item.quantity * item.discount) / 100 
-                              : item.discount))}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Subtotal:</span>
-                      <span>{formatCurrency(getSubtotal())}</span>
+                      ))}
                     </div>
                     
-                    {discount > 0 && (
-                      <div className="flex justify-between text-red-600 text-sm">
-                        <span>Desconto:</span>
-                        <span>-{formatCurrency(getDiscountAmount())}</span>
-                      </div>
-                    )}
+                    <Separator />
                     
-                    {addition > 0 && (
-                      <div className="flex justify-between text-blue-600 text-sm">
-                        <span>Acréscimo:</span>
-                        <span>+{formatCurrency(getAdditionAmount())}</span>
-                      </div>
-                    )}
-                    
-                    <div className="flex justify-between text-lg font-bold">
-                      <span>Total:</span>
-                      <span>{formatCurrency(getTotal())}</span>
-                    </div>
-                    
-                    {getTotalFees() > 0 && (
-                      <div className="flex justify-between text-orange-600 text-sm">
-                        <span>Taxas:</span>
-                        <span>+{formatCurrency(getTotalFees())}</span>
-                      </div>
-                    )}
-                    
-                    {getFinalAmount() !== getTotal() && (
-                      <div className="flex justify-between text-lg font-bold text-purple-600">
-                        <span>Total Final:</span>
-                        <span>{formatCurrency(getFinalAmount())}</span>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div className="space-y-3">
-                    {/* Customer Selection */}
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium">Cliente</Label>
+                      <div className="flex justify-between text-sm">
+                        <span>Subtotal:</span>
+                        <span>{formatCurrency(getSubtotal())}</span>
+                      </div>
+                      
+                      {discount > 0 && (
+                        <div className="flex justify-between text-red-600 text-sm">
+                          <span>Desconto:</span>
+                          <span>-{formatCurrency(getDiscountAmount())}</span>
+                        </div>
+                      )}
+                      
+                      {addition > 0 && (
+                        <div className="flex justify-between text-blue-600 text-sm">
+                          <span>Acréscimo:</span>
+                          <span>+{formatCurrency(getAdditionAmount())}</span>
+                        </div>
+                      )}
+                      
+                      <div className="flex justify-between text-lg font-bold">
+                        <span>Total:</span>
+                        <span>{formatCurrency(getTotal())}</span>
+                      </div>
+                      
+                      {getTotalFees() > 0 && (
+                        <div className="flex justify-between text-orange-600 text-sm">
+                          <span>Taxas:</span>
+                          <span>+{formatCurrency(getTotalFees())}</span>
+                        </div>
+                      )}
+                      
+                      {getFinalAmount() !== getTotal() && (
+                        <div className="flex justify-between text-lg font-bold text-purple-600">
+                          <span>Total Final:</span>
+                          <span>{formatCurrency(getFinalAmount())}</span>
+                        </div>
+                      )}
+                      
+                    </div>
+                    
+                    <Separator />
+                    
+                    <div className="space-y-3">
+                      {/* Customer Selection */}
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Cliente</Label>
+                        <div className="flex space-x-2">
+                          <Select
+                            value={customer?.id || 'none'}
+                            onValueChange={(value) => {
+                              if (value === 'none') {
+                                setCustomer(null);
+                                return;
+                              }
+                              const selectedCustomer = customers.find(c => c._id === value);
+                              setCustomer(selectedCustomer ? {
+                                id: selectedCustomer._id,
+                                name: selectedCustomer.name,
+                                phone: selectedCustomer.phone,
+                                email: selectedCustomer.email,
+                              } : null);
+                            }}
+                          >
+                            <SelectTrigger className="flex-1 h-12 md:h-10">
+                              <SelectValue placeholder="Selecionar cliente" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Sem cliente</SelectItem>
+                              {customers.map((c) => (
+                                <SelectItem key={c._id} value={c._id}>
+                                  {c.name} - {c.phone}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Dialog open={showCustomerDialog} onOpenChange={setShowCustomerDialog}>
+                            <DialogTrigger asChild>
+                              <Button variant="outline" size="icon" className="h-12 w-12 md:h-10 md:w-10 touch-button">
+                                <UserPlus className="h-4 w-4" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Novo Cliente</DialogTitle>
+                              </DialogHeader>
+                              <div className="space-y-4">
+                                <div className="space-y-2">
+                                  <Label>Nome *</Label>
+                                  <Input
+                                    value={newCustomer.name}
+                                    onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })}
+                                    className="h-12 md:h-10"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label>Telefone *</Label>
+                                  <Input
+                                    value={newCustomer.phone}
+                                    onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })}
+                                    className="h-12 md:h-10"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label>E-mail</Label>
+                                  <Input
+                                    type="email"
+                                    value={newCustomer.email}
+                                    onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })}
+                                    className="h-12 md:h-10"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label>Preferência</Label>
+                                  <Select
+                                    value={newCustomer.preference}
+                                    onValueChange={(value: any) => setNewCustomer({ ...newCustomer, preference: value })}
+                                  >
+                                    <SelectTrigger className="h-12 md:h-10">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="todos">Todos</SelectItem>
+                                      <SelectItem value="masculino">Masculino</SelectItem>
+                                      <SelectItem value="feminino">Feminino</SelectItem>
+                                      <SelectItem value="infantil">Infantil</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="flex space-x-2">
+                                  <Button onClick={handleCreateCustomer} className="flex-1 h-12 md:h-10">
+                                    Criar Cliente
+                                  </Button>
+                                  <Button variant="outline" onClick={() => setShowCustomerDialog(false)} className="h-12 md:h-10">
+                                    Cancelar
+                                  </Button>
+                                </div>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        </div>
+                      </div>
+
+                      {/* Discount and Addition */}
                       <div className="flex space-x-2">
-                        <Select
-                          value={customer?.id || 'none'}
-                          onValueChange={(value) => {
-                            if (value === 'none') {
-                              setCustomer(null);
-                              return;
-                            }
-                            const selectedCustomer = customers.find(c => c._id === value);
-                            setCustomer(selectedCustomer ? {
-                              id: selectedCustomer._id,
-                              name: selectedCustomer.name,
-                              phone: selectedCustomer.phone,
-                              email: selectedCustomer.email,
-                            } : null);
-                          }}
-                        >
-                          <SelectTrigger className="flex-1">
-                            <SelectValue placeholder="Selecionar cliente" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">Sem cliente</SelectItem>
-                            {customers.map((c) => (
-                              <SelectItem key={c._id} value={c._id}>
-                                {c.name} - {c.phone}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Dialog open={showCustomerDialog} onOpenChange={setShowCustomerDialog}>
+                        <Dialog open={showDiscountDialog} onOpenChange={setShowDiscountDialog}>
                           <DialogTrigger asChild>
-                            <Button variant="outline" size="icon">
-                              <UserPlus className="h-4 w-4" />
+                            <Button variant="outline" className="flex-1 h-12 md:h-10 touch-button" size="sm">
+                              <Percent className="mr-2 h-4 w-4" />
+                              Desconto
                             </Button>
                           </DialogTrigger>
                           <DialogContent>
                             <DialogHeader>
-                              <DialogTitle>Novo Cliente</DialogTitle>
+                              <DialogTitle>
+                                {selectedItemForDiscount ? 'Desconto no Item' : 'Desconto Total'}
+                              </DialogTitle>
                             </DialogHeader>
                             <div className="space-y-4">
                               <div className="space-y-2">
-                                <Label>Nome *</Label>
-                                <Input
-                                  value={newCustomer.name}
-                                  onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })}
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label>Telefone *</Label>
-                                <Input
-                                  value={newCustomer.phone}
-                                  onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })}
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label>E-mail</Label>
-                                <Input
-                                  type="email"
-                                  value={newCustomer.email}
-                                  onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })}
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label>Preferência</Label>
+                                <Label>Tipo de Desconto</Label>
                                 <Select
-                                  value={newCustomer.preference}
-                                  onValueChange={(value: any) => setNewCustomer({ ...newCustomer, preference: value })}
+                                  value={discountForm.type}
+                                  onValueChange={(value: 'percentage' | 'fixed') => 
+                                    setDiscountForm({ ...discountForm, type: value })
+                                  }
                                 >
-                                  <SelectTrigger>
+                                  <SelectTrigger className="h-12 md:h-10">
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="todos">Todos</SelectItem>
-                                    <SelectItem value="masculino">Masculino</SelectItem>
-                                    <SelectItem value="feminino">Feminino</SelectItem>
-                                    <SelectItem value="infantil">Infantil</SelectItem>
+                                    <SelectItem value="fixed">Valor Fixo (R$)</SelectItem>
+                                    <SelectItem value="percentage">Percentual (%)</SelectItem>
                                   </SelectContent>
                                 </Select>
                               </div>
+                              <div className="space-y-2">
+                                <Label>Valor</Label>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  value={discountForm.amount}
+                                  onChange={(e) => setDiscountForm({ ...discountForm, amount: Number(e.target.value) })}
+                                  className="h-12 md:h-10"
+                                />
+                              </div>
                               <div className="flex space-x-2">
-                                <Button onClick={handleCreateCustomer} className="flex-1">
-                                  Criar Cliente
+                                <Button onClick={handleApplyDiscount} className="flex-1 h-12 md:h-10">
+                                  Aplicar
                                 </Button>
-                                <Button variant="outline" onClick={() => setShowCustomerDialog(false)}>
+                                <Button 
+                                  variant="outline" 
+                                  onClick={() => {
+                                    setShowDiscountDialog(false);
+                                    setSelectedItemForDiscount(null);
+                                  }}
+                                  className="h-12 md:h-10"
+                                >
+                                  Cancelar
+                                </Button>
+                              </div>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+
+                        <Dialog open={showAdditionDialog} onOpenChange={setShowAdditionDialog}>
+                          <DialogTrigger asChild>
+                            <Button variant="outline" className="flex-1 h-12 md:h-10 touch-button" size="sm">
+                              <Plus className="mr-2 h-4 w-4" />
+                              Acréscimo
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Acréscimo Total</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <div className="space-y-2">
+                                <Label>Tipo de Acréscimo</Label>
+                                <Select
+                                  value={additionForm.type}
+                                  onValueChange={(value: 'percentage' | 'fixed') => 
+                                    setAdditionForm({ ...additionForm, type: value })
+                                  }
+                                >
+                                  <SelectTrigger className="h-12 md:h-10">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="fixed">Valor Fixo (R$)</SelectItem>
+                                    <SelectItem value="percentage">Percentual (%)</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Valor</Label>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  value={additionForm.amount}
+                                  onChange={(e) => setAdditionForm({ ...additionForm, amount: Number(e.target.value) })}
+                                  className="h-12 md:h-10"
+                                />
+                              </div>
+                              <div className="flex space-x-2">
+                                <Button onClick={handleApplyAddition} className="flex-1 h-12 md:h-10">
+                                  Aplicar
+                                </Button>
+                                <Button variant="outline" onClick={() => setShowAdditionDialog(false)} className="h-12 md:h-10">
                                   Cancelar
                                 </Button>
                               </div>
@@ -751,245 +924,149 @@ export default function PDVPage() {
                           </DialogContent>
                         </Dialog>
                       </div>
-                    </div>
 
-                    {/* Discount and Addition */}
-                    <div className="flex space-x-2">
-                      <Dialog open={showDiscountDialog} onOpenChange={setShowDiscountDialog}>
-                        <DialogTrigger asChild>
-                          <Button variant="outline" className="flex-1" size="sm">
-                            <Percent className="mr-2 h-4 w-4" />
-                            Desconto
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>
-                              {selectedItemForDiscount ? 'Desconto no Item' : 'Desconto Total'}
-                            </DialogTitle>
-                          </DialogHeader>
-                          <div className="space-y-4">
-                            <div className="space-y-2">
-                              <Label>Tipo de Desconto</Label>
-                              <Select
-                                value={discountForm.type}
-                                onValueChange={(value: 'percentage' | 'fixed') => 
-                                  setDiscountForm({ ...discountForm, type: value })
-                                }
-                              >
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="fixed">Valor Fixo (R$)</SelectItem>
-                                  <SelectItem value="percentage">Percentual (%)</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Valor</Label>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                value={discountForm.amount}
-                                onChange={(e) => setDiscountForm({ ...discountForm, amount: Number(e.target.value) })}
-                              />
-                            </div>
-                            <div className="flex space-x-2">
-                              <Button onClick={handleApplyDiscount} className="flex-1">
-                                Aplicar
-                              </Button>
-                              <Button 
-                                variant="outline" 
-                                onClick={() => {
-                                  setShowDiscountDialog(false);
-                                  setSelectedItemForDiscount(null);
-                                }}
-                              >
-                                Cancelar
-                              </Button>
-                            </div>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-
-                      <Dialog open={showAdditionDialog} onOpenChange={setShowAdditionDialog}>
-                        <DialogTrigger asChild>
-                          <Button variant="outline" className="flex-1" size="sm">
-                            <Plus className="mr-2 h-4 w-4" />
-                            Acréscimo
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Acréscimo Total</DialogTitle>
-                          </DialogHeader>
-                          <div className="space-y-4">
-                            <div className="space-y-2">
-                              <Label>Tipo de Acréscimo</Label>
-                              <Select
-                                value={additionForm.type}
-                                onValueChange={(value: 'percentage' | 'fixed') => 
-                                  setAdditionForm({ ...additionForm, type: value })
-                                }
-                              >
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="fixed">Valor Fixo (R$)</SelectItem>
-                                  <SelectItem value="percentage">Percentual (%)</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Valor</Label>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                value={additionForm.amount}
-                                onChange={(e) => setAdditionForm({ ...additionForm, amount: Number(e.target.value) })}
-                              />
-                            </div>
-                            <div className="flex space-x-2">
-                              <Button onClick={handleApplyAddition} className="flex-1">
-                                Aplicar
-                              </Button>
-                              <Button variant="outline" onClick={() => setShowAdditionDialog(false)}>
-                                Cancelar
-                              </Button>
-                            </div>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-                    </div>
-
-                    {/* Payment Methods */}
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">Pagamentos</Label>
-                      
-                      {paymentMethods.map((payment, index) => (
-                        <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm">
-                          <div>
-                            <span className="font-medium">
-                              {getPaymentMethodLabel(payment.type)}
-                            </span>
-                            <p className="text-xs text-gray-500">
-                              {formatCurrency(payment.amount)}
-                              {payment.fee && payment.fee > 0 && (
-                                <span className="text-orange-600">
-                                  {' '}(Taxa: {formatCurrency(payment.fee)})
-                                </span>
-                              )}
-                              {payment.chargeAmount && payment.chargeAmount !== payment.amount && (
-                                <span className="text-purple-600">
-                                  {' '}→ Cobrar: {formatCurrency(payment.chargeAmount)}
-                                </span>
-                              )}
-                            </p>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => removePaymentMethod(index)}
-                            className="h-6 px-2"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      ))}
-
-                      <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
-                        <DialogTrigger asChild>
-                          <Button variant="outline" className="w-full" size="sm">
-                            <Plus className="mr-2 h-4 w-4" />
-                            Adicionar Pagamento
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Adicionar Forma de Pagamento</DialogTitle>
-                          </DialogHeader>
-                          <div className="space-y-4">
-                            <div className="space-y-2">
-                              <Label>Método de Pagamento</Label>
-                              <Select
-                                value={paymentForm.type}
-                                onValueChange={(value: any) => setPaymentForm({ ...paymentForm, type: value })}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {getEnabledPaymentMethods().map((method) => (
-                                    <SelectItem key={method.value} value={method.value}>
-                                      {method.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Valor</Label>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                value={paymentForm.amount}
-                                onChange={(e) => setPaymentForm({ ...paymentForm, amount: Number(e.target.value) })}
-                              />
+                      {/* Payment Methods */}
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Pagamentos</Label>
+                        
+                        {paymentMethods.map((payment, index) => (
+                          <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm">
+                            <div>
+                              <span className="font-medium">
+                                {getPaymentMethodLabel(payment.type)}
+                              </span>
                               <p className="text-xs text-gray-500">
-                                Restante: {formatCurrency(getTotal() - paymentMethods.reduce((sum, p) => sum + p.amount, 0))}
+                                {formatCurrency(payment.amount)}
+                                {payment.fee && payment.fee > 0 && (
+                                  <span className="text-orange-600">
+                                    {' '}(Taxa: {formatCurrency(payment.fee)})
+                                  </span>
+                                )}
+                                {payment.chargeAmount && payment.chargeAmount !== payment.amount && (
+                                  <span className="text-purple-600">
+                                    {' '}→ Cobrar: {formatCurrency(payment.chargeAmount)}
+                                  </span>
+                                )}
                               </p>
                             </div>
-                            
-                            {paymentForm.amount > 0 && paymentSettings && (
-                              <div className="p-3 bg-blue-50 rounded-lg">
-                                {(() => {
-                                  const { fee, chargeAmount } = calculatePaymentFee(paymentForm.type, paymentForm.amount);
-                                  if (fee > 0 && paymentSettings.feeResponsibility === 'customer') {
-                                    return (
-                                      <div className="text-sm">
-                                        <p className="font-medium text-blue-900">Cobrança com Taxa:</p>
-                                        <p className="text-blue-700">
-                                          Cobrar <strong>{formatCurrency(chargeAmount)}</strong> para receber <strong>{formatCurrency(paymentForm.amount)}</strong>
-                                        </p>
-                                        <p className="text-xs text-blue-600">
-                                          Taxa: {formatCurrency(fee)}
-                                        </p>
-                                      </div>
-                                    );
-                                  }
-                                  return null;
-                                })()}
-                              </div>
-                            )}
-                            
-                            <div className="flex space-x-2">
-                              <Button onClick={handleAddPayment} className="flex-1">
-                                Adicionar
-                              </Button>
-                              <Button variant="outline" onClick={() => setShowPaymentDialog(false)}>
-                                Cancelar
-                              </Button>
-                            </div>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => removePaymentMethod(index)}
+                              className="h-8 px-2 touch-button"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
                           </div>
-                        </DialogContent>
-                      </Dialog>
+                        ))}
+
+                        <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+                          <DialogTrigger asChild>
+                            <Button variant="outline" className="w-full h-12 md:h-10 touch-button" size="sm">
+                              <Plus className="mr-2 h-4 w-4" />
+                              Adicionar Pagamento
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Adicionar Forma de Pagamento</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <div className="space-y-2">
+                                <Label>Método de Pagamento</Label>
+                                <Select
+                                  value={paymentForm.type}
+                                  onValueChange={(value: any) => setPaymentForm({ ...paymentForm, type: value })}
+                                >
+                                  <SelectTrigger className="h-12 md:h-10">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {getEnabledPaymentMethods().map((method) => (
+                                      <SelectItem key={method.value} value={method.value}>
+                                        {method.label}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              
+                              
+                              <div className="space-y-2">
+                                <Label>Valor do Pagamento</Label>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  value={paymentForm.amount}
+                                  onChange={(e) => setPaymentForm({ ...paymentForm, receivedAmount: Number(e.target.value), amount: Number(e.target.value) })}
+                                  className="h-12 md:h-10"
+                                />
+                                <p className="text-xs text-gray-500">
+                                  Restante: {formatCurrency(getTotal() - paymentMethods.reduce((sum, p) => sum + p.amount, 0))}
+                                </p>
+                              </div>
+                              
+                              {/* Exibir troco se for dinheiro */}
+                              {paymentForm.type === 'dinheiro' && change > 0 && (
+                                <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                                  <div className="text-center">
+                                    <p className="text-sm text-green-700 font-medium">TROCO</p>
+                                    <p className="text-2xl font-bold text-green-800">
+                                      {formatCurrency(change)}
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {paymentForm.amount > 0 && paymentSettings && (
+                                <div className="p-3 bg-blue-50 rounded-lg">
+                                  {(() => {
+                                    const { fee, chargeAmount } = calculatePaymentFee(paymentForm.type, paymentForm.amount);
+                                    if (fee > 0 && paymentSettings.feeResponsibility === 'customer') {
+                                      return (
+                                        <div className="text-sm">
+                                          <p className="font-medium text-blue-900">Cobrança com Taxa:</p>
+                                          <p className="text-blue-700">
+                                            Cobrar <strong>{formatCurrency(chargeAmount)}</strong> para receber <strong>{formatCurrency(paymentForm.amount)}</strong>
+                                          </p>
+                                          <p className="text-xs text-blue-600">
+                                            Taxa: {formatCurrency(fee)}
+                                          </p>
+                                        </div>
+                                      );
+                                    }
+                                    return null;
+                                  })()}
+                                </div>
+                              )}
+                              
+                              <div className="flex space-x-2">
+                                <Button onClick={handleAddPayment} className="flex-1 h-12 md:h-10">
+                                  Adicionar
+                                </Button>
+                                <Button variant="outline" onClick={() => setShowPaymentDialog(false)} className="h-12 md:h-10">
+                                  Cancelar
+                                </Button>
+                              </div>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
+                      
+                      <Button
+                        onClick={completeSale}
+                        disabled={loading || cart.length === 0 || paymentMethods.reduce((sum, p) => sum + p.amount, 0) !== getTotal()}
+                        className="w-full bg-green-600 hover:bg-green-700 h-12 md:h-10 touch-button"
+                      >
+                        <CreditCard className="mr-2 h-4 w-4" />
+                        {loading ? 'Processando...' : 'Finalizar Venda'}
+                      </Button>
                     </div>
-                    
-                    <Button
-                      onClick={completeSale}
-                      disabled={loading || cart.length === 0 || paymentMethods.reduce((sum, p) => sum + p.amount, 0) !== getTotal()}
-                      className="w-full bg-green-600 hover:bg-green-700"
-                    >
-                      <CreditCard className="mr-2 h-4 w-4" />
-                      {loading ? 'Processando...' : 'Finalizar Venda'}
-                    </Button>
                   </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </div>

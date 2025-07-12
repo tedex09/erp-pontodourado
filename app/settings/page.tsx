@@ -19,9 +19,12 @@ import {
   MessageCircle,
   CreditCard,
   DollarSign,
-  MapPin
+  MapPin,
+  Palette,
+  Type
 } from 'lucide-react';
 import { showToast } from '@/components/ui/toast';
+import { useThemeStore } from '@/store/useThemeStore';
 
 interface SettingsData {
   _id?: string;
@@ -68,6 +71,8 @@ interface PaymentSettings {
 }
 
 export default function SettingsPage() {
+  const { colors, companyName, setColors, setCompanyName, resetToDefault } = useThemeStore();
+  
   const [settings, setSettings] = useState<SettingsData>({
     defaultMargin: 300,
     emailNotifications: false,
@@ -94,11 +99,20 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
 
+  // Theme form state
+  const [themeForm, setThemeForm] = useState({
+    companyName: companyName,
+    primaryColor: '#6366f1',
+    backgroundColor: '#ffffff',
+    textColor: '#111827',
+  });
+
   useEffect(() => {
     fetchSettings();
     fetchPaymentSettings();
     loadMapScript();
-  }, []);
+    setThemeForm(prev => ({ ...prev, companyName }));
+  }, [companyName]);
 
   const loadMapScript = () => {
     if (window.google) {
@@ -274,6 +288,42 @@ export default function SettingsPage() {
     }
   };
 
+  const handleSaveTheme = () => {
+    setCompanyName(themeForm.companyName);
+    
+    // Convert hex colors to HSL for CSS variables
+    const hexToHsl = (hex: string) => {
+      const r = parseInt(hex.slice(1, 3), 16) / 255;
+      const g = parseInt(hex.slice(3, 5), 16) / 255;
+      const b = parseInt(hex.slice(5, 7), 16) / 255;
+
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      let h = 0, s = 0, l = (max + min) / 2;
+
+      if (max !== min) {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+          case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+          case g: h = (b - r) / d + 2; break;
+          case b: h = (r - g) / d + 4; break;
+        }
+        h /= 6;
+      }
+
+      return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
+    };
+
+    setColors({
+      primary: hexToHsl(themeForm.primaryColor),
+      background: hexToHsl(themeForm.backgroundColor),
+      foreground: hexToHsl(themeForm.textColor),
+    });
+
+    showToast.success('Tema atualizado com sucesso');
+  };
+
   const updateSetting = (key: keyof SettingsData, value: any) => {
     setSettings(prev => ({ ...prev, [key]: value }));
   };
@@ -302,14 +352,15 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900">Configurações</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Configurações</h1>
       </div>
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="general">Configurações Gerais</TabsTrigger>
-          <TabsTrigger value="payments">Métodos de Pagamento</TabsTrigger>
-          <TabsTrigger value="location">Localização</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto">
+          <TabsTrigger value="general" className="text-xs md:text-sm p-2 md:p-3">Geral</TabsTrigger>
+          <TabsTrigger value="theme" className="text-xs md:text-sm p-2 md:p-3">Tema</TabsTrigger>
+          <TabsTrigger value="payments" className="text-xs md:text-sm p-2 md:p-3">Pagamentos</TabsTrigger>
+          <TabsTrigger value="location" className="text-xs md:text-sm p-2 md:p-3">Localização</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="space-y-6">
@@ -317,7 +368,7 @@ export default function SettingsPage() {
             <Button 
               onClick={handleSaveSettings} 
               disabled={saving} 
-              className="bg-indigo-600 hover:bg-indigo-700"
+              className="bg-indigo-600 hover:bg-indigo-700 h-12 md:h-10 touch-button"
             >
               <Save className="mr-2 h-4 w-4" />
               {saving ? 'Salvando...' : 'Salvar Alterações'}
@@ -344,6 +395,7 @@ export default function SettingsPage() {
                     value={settings.companyName}
                     onChange={(e) => updateSetting('companyName', e.target.value)}
                     placeholder="Nome da sua loja"
+                    className="h-12 md:h-10"
                   />
                 </div>
                 
@@ -354,6 +406,7 @@ export default function SettingsPage() {
                     value={settings.companyPhone || ''}
                     onChange={(e) => updateSetting('companyPhone', e.target.value)}
                     placeholder="(11) 99999-9999"
+                    className="h-12 md:h-10"
                   />
                 </div>
                 
@@ -365,6 +418,7 @@ export default function SettingsPage() {
                     value={settings.companyEmail || ''}
                     onChange={(e) => updateSetting('companyEmail', e.target.value)}
                     placeholder="contato@sualojabyju.com"
+                    className="h-12 md:h-10"
                   />
                 </div>
               </CardContent>
@@ -391,6 +445,7 @@ export default function SettingsPage() {
                     max="1000"
                     value={settings.defaultMargin}
                     onChange={(e) => updateSetting('defaultMargin', Number(e.target.value))}
+                    className="h-12 md:h-10"
                   />
                   <p className="text-sm text-gray-500">
                     Esta margem será usada como sugestão padrão ao criar categorias e produtos.
@@ -427,6 +482,7 @@ export default function SettingsPage() {
                     min="0"
                     value={settings.lowStockAlert}
                     onChange={(e) => updateSetting('lowStockAlert', Number(e.target.value))}
+                    className="h-12 md:h-10"
                   />
                   <p className="text-sm text-gray-500">
                     Produtos com estoque igual ou menor que este valor aparecerão nos alertas.
@@ -482,12 +538,140 @@ export default function SettingsPage() {
           </div>
         </TabsContent>
 
+        <TabsContent value="theme" className="space-y-6">
+          <div className="flex justify-between">
+            <Button 
+              onClick={resetToDefault} 
+              variant="outline"
+              className="h-12 md:h-10 touch-button"
+            >
+              Restaurar Padrão
+            </Button>
+            <Button 
+              onClick={handleSaveTheme} 
+              className="bg-indigo-600 hover:bg-indigo-700 h-12 md:h-10 touch-button"
+            >
+              <Save className="mr-2 h-4 w-4" />
+              Salvar Tema
+            </Button>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Palette className="mr-2 h-5 w-5" />
+                Personalização Visual
+              </CardTitle>
+              <CardDescription>
+                Customize as cores e aparência do sistema
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="themeCompanyName" className="flex items-center">
+                  <Type className="mr-2 h-4 w-4" />
+                  Nome da Loja
+                </Label>
+                <Input
+                  id="themeCompanyName"
+                  value={themeForm.companyName}
+                  onChange={(e) => setThemeForm({ ...themeForm, companyName: e.target.value })}
+                  placeholder="Nome da sua loja"
+                  className="h-12 md:h-10"
+                />
+                <p className="text-sm text-gray-500">
+                  Este nome aparecerá no título da aba e na navegação
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="primaryColor">Cor Principal</Label>
+                  <div className="flex space-x-2">
+                    <Input
+                      id="primaryColor"
+                      type="color"
+                      value={themeForm.primaryColor}
+                      onChange={(e) => setThemeForm({ ...themeForm, primaryColor: e.target.value })}
+                      className="w-16 h-12 md:h-10 p-1 border rounded"
+                    />
+                    <Input
+                      value={themeForm.primaryColor}
+                      onChange={(e) => setThemeForm({ ...themeForm, primaryColor: e.target.value })}
+                      placeholder="#6366f1"
+                      className="flex-1 h-12 md:h-10"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="backgroundColor">Cor de Fundo</Label>
+                  <div className="flex space-x-2">
+                    <Input
+                      id="backgroundColor"
+                      type="color"
+                      value={themeForm.backgroundColor}
+                      onChange={(e) => setThemeForm({ ...themeForm, backgroundColor: e.target.value })}
+                      className="w-16 h-12 md:h-10 p-1 border rounded"
+                    />
+                    <Input
+                      value={themeForm.backgroundColor}
+                      onChange={(e) => setThemeForm({ ...themeForm, backgroundColor: e.target.value })}
+                      placeholder="#ffffff"
+                      className="flex-1 h-12 md:h-10"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="textColor">Cor do Texto</Label>
+                  <div className="flex space-x-2">
+                    <Input
+                      id="textColor"
+                      type="color"
+                      value={themeForm.textColor}
+                      onChange={(e) => setThemeForm({ ...themeForm, textColor: e.target.value })}
+                      className="w-16 h-12 md:h-10 p-1 border rounded"
+                    />
+                    <Input
+                      value={themeForm.textColor}
+                      onChange={(e) => setThemeForm({ ...themeForm, textColor: e.target.value })}
+                      placeholder="#111827"
+                      className="flex-1 h-12 md:h-10"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <h4 className="font-medium text-gray-900 mb-2">Pré-visualização</h4>
+                <div 
+                  className="p-4 rounded-lg border-2"
+                  style={{ 
+                    backgroundColor: themeForm.backgroundColor,
+                    borderColor: themeForm.primaryColor,
+                    color: themeForm.textColor
+                  }}
+                >
+                  <h3 className="font-semibold mb-2">{themeForm.companyName}</h3>
+                  <button 
+                    className="px-4 py-2 rounded text-white font-medium"
+                    style={{ backgroundColor: themeForm.primaryColor }}
+                  >
+                    Botão de Exemplo
+                  </button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="payments" className="space-y-6">
           <div className="flex justify-end">
             <Button 
               onClick={handleSavePaymentSettings} 
               disabled={saving} 
-              className="bg-indigo-600 hover:bg-indigo-700"
+              className="bg-indigo-600 hover:bg-indigo-700 h-12 md:h-10 touch-button"
             >
               <Save className="mr-2 h-4 w-4" />
               {saving ? 'Salvando...' : 'Salvar Configurações'}
@@ -537,7 +721,7 @@ export default function SettingsPage() {
                     />
                   </div>
                   {paymentSettings.methods.pix.enabled && (
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div className="space-y-2">
                         <Label>Taxa (%)</Label>
                         <Input
@@ -545,6 +729,7 @@ export default function SettingsPage() {
                           step="0.01"
                           value={paymentSettings.methods.pix.fee}
                           onChange={(e) => updatePaymentMethod('pix', 'fee', Number(e.target.value))}
+                          className="h-12 md:h-10"
                         />
                       </div>
                     </div>
@@ -567,7 +752,7 @@ export default function SettingsPage() {
                     />
                   </div>
                   {paymentSettings.methods.pixQrCode.enabled && (
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <div className="space-y-2">
                         <Label>Taxa (%)</Label>
                         <Input
@@ -575,6 +760,7 @@ export default function SettingsPage() {
                           step="0.01"
                           value={paymentSettings.methods.pixQrCode.fee}
                           onChange={(e) => updatePaymentMethod('pixQrCode', 'fee', Number(e.target.value))}
+                          className="h-12 md:h-10"
                         />
                       </div>
                       <div className="space-y-2">
@@ -583,7 +769,7 @@ export default function SettingsPage() {
                           value={paymentSettings.methods.pixQrCode.feeResponsibility}
                           onValueChange={(value) => updatePaymentMethod('pixQrCode', 'feeResponsibility', value)}
                         >
-                          <SelectTrigger>
+                          <SelectTrigger className="h-12 md:h-10">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -612,7 +798,7 @@ export default function SettingsPage() {
                     />
                   </div>
                   {paymentSettings.methods.debitoCard.enabled && (
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <div className="space-y-2">
                         <Label>Taxa (%)</Label>
                         <Input
@@ -620,6 +806,7 @@ export default function SettingsPage() {
                           step="0.01"
                           value={paymentSettings.methods.debitoCard.fee}
                           onChange={(e) => updatePaymentMethod('debitoCard', 'fee', Number(e.target.value))}
+                          className="h-12 md:h-10"
                         />
                       </div>
                       <div className="space-y-2">
@@ -628,7 +815,7 @@ export default function SettingsPage() {
                           value={paymentSettings.methods.debitoCard.feeResponsibility}
                           onValueChange={(value) => updatePaymentMethod('debitoCard', 'feeResponsibility', value)}
                         >
-                          <SelectTrigger>
+                          <SelectTrigger className="h-12 md:h-10">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -657,7 +844,7 @@ export default function SettingsPage() {
                     />
                   </div>
                   {paymentSettings.methods.creditoCard.enabled && (
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <div className="space-y-2">
                         <Label>Taxa (%)</Label>
                         <Input
@@ -665,6 +852,7 @@ export default function SettingsPage() {
                           step="0.01"
                           value={paymentSettings.methods.creditoCard.fee}
                           onChange={(e) => updatePaymentMethod('creditoCard', 'fee', Number(e.target.value))}
+                          className="h-12 md:h-10"
                         />
                       </div>
                       <div className="space-y-2">
@@ -673,7 +861,7 @@ export default function SettingsPage() {
                           value={paymentSettings.methods.creditoCard.feeResponsibility}
                           onValueChange={(value) => updatePaymentMethod('creditoCard', 'feeResponsibility', value)}
                         >
-                          <SelectTrigger>
+                          <SelectTrigger className="h-12 md:h-10">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -710,7 +898,7 @@ export default function SettingsPage() {
             <Button 
               onClick={handleSaveSettings} 
               disabled={saving} 
-              className="bg-indigo-600 hover:bg-indigo-700"
+              className="bg-indigo-600 hover:bg-indigo-700 h-12 md:h-10 touch-button"
             >
               <Save className="mr-2 h-4 w-4" />
               {saving ? 'Salvando...' : 'Salvar Alterações'}
@@ -729,12 +917,12 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-4">
-                <div className="flex space-x-2">
-                  <Button onClick={getCurrentLocation} variant="outline" className="flex-1">
+                <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
+                  <Button onClick={getCurrentLocation} variant="outline" className="flex-1 h-12 md:h-10 touch-button">
                     <MapPin className="mr-2 h-4 w-4" />
                     Usar Localização Atual
                   </Button>
-                  <Button onClick={initializeMap} variant="outline" className="flex-1">
+                  <Button onClick={initializeMap} variant="outline" className="flex-1 h-12 md:h-10 touch-button">
                     <MapPin className="mr-2 h-4 w-4" />
                     Selecionar no Mapa
                   </Button>
@@ -764,7 +952,7 @@ export default function SettingsPage() {
                 {settings.location && (
                   <div className="p-4 bg-green-50 rounded-lg">
                     <h3 className="font-semibold text-green-800 mb-2">Localização Configurada</h3>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                       <div>
                         <p className="text-green-600">Latitude:</p>
                         <p className="font-medium">{settings.location.latitude.toFixed(6)}</p>
@@ -789,6 +977,7 @@ export default function SettingsPage() {
                       ...settings.location,
                       radius: Number(e.target.value)
                     })}
+                    className="h-12 md:h-10"
                   />
                   <p className="text-sm text-gray-500">
                     Funcionários podem bater ponto dentro deste raio da localização configurada.
@@ -805,6 +994,7 @@ export default function SettingsPage() {
                       address: e.target.value
                     })}
                     placeholder="Endereço da loja para referência"
+                    className="h-12 md:h-10"
                   />
                 </div>
               </div>

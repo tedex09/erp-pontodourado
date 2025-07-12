@@ -5,6 +5,8 @@ import { useSession } from 'next-auth/react';
 import { usePathname, useRouter } from 'next/navigation';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
+import { MobileBottomNav, MobileHeader } from './ui/mobile-nav';
+import { ThemeProvider } from './ThemeProvider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Clock, MapPin, AlertTriangle } from 'lucide-react';
@@ -118,7 +120,7 @@ export default function Layout({ children }: LayoutProps) {
             
             <Button 
               onClick={() => router.push('/ponto')} 
-              className="w-full bg-indigo-600 hover:bg-indigo-700"
+              className="w-full bg-indigo-600 hover:bg-indigo-700 h-12 touch-button"
             >
               <Clock className="mr-2 h-4 w-4" />
               Ir para Controle de Ponto
@@ -130,51 +132,53 @@ export default function Layout({ children }: LayoutProps) {
   }
   
   if (isAuthPage || !session) {
-    return <>{children}</>;
+    return (
+      <ThemeProvider>
+        {children}
+      </ThemeProvider>
+    );
   }
 
   // PDV Layout - Full screen without sidebar
   if (isPDVPage) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="bg-white shadow-sm border-b border-gray-200 px-4 py-3">
-          <div className="flex items-center justify-between">
-            <Button
-              variant="outline"
-              onClick={() => router.push('/')}
-              className="flex items-center space-x-2"
-            >
-              <span>←</span>
-              <span>Voltar</span>
-            </Button>
-            <h1 className="text-lg font-semibold text-gray-900">
-              PDV - Ponto de Venda
-            </h1>
-            <div className="flex items-center space-x-2 text-sm text-gray-600">
-              <span>{session?.user?.name}</span>
-              <span>({session?.user?.role})</span>
-            </div>
-          </div>
-        </div>
-        <div className="p-4">
+      <ThemeProvider>
+        <div className="min-h-screen bg-gray-50">
           {children}
+          <MobileBottomNav />
         </div>
-      </div>
+      </ThemeProvider>
     );
   }
   
-  // Default Layout with sidebar
+  // Default Layout with sidebar for desktop and mobile navigation
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Navbar />
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50">
-          <div className="container mx-auto px-4 py-8">
-            {children}
+    <ThemeProvider>
+      <div className="flex h-screen bg-gray-50">
+        {/* Desktop Sidebar */}
+        <div className="hidden md:block">
+          <Sidebar />
+        </div>
+        
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Desktop Navbar */}
+          <div className="hidden md:block">
+            <Navbar />
           </div>
-        </main>
+          
+          {/* Mobile Header */}
+          <MobileHeader />
+          
+          <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 pb-16 md:pb-0">
+            <div className="container mx-auto px-4 py-4 md:py-8">
+              {children}
+            </div>
+          </main>
+        </div>
+        
+        {/* Mobile Bottom Navigation */}
+        <MobileBottomNav />
       </div>
-    </div>
+    </ThemeProvider>
   );
 }
