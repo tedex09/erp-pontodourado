@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Store } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { showToast } from '@/components/ui/toast';
+import Image from 'next/image';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -60,11 +61,11 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 to-purple-50 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="flex items-center justify-center mb-4">
-            <Store className="h-12 w-12 text-indigo-600" />
-          </div>
+          {/* <div className="flex items-center justify-center mb-4">
+            <Image src="/images/pontodourado.png" alt="Ponto Dourado" width={100} height={20} />
+          </div> */}
           <CardTitle className="text-2xl font-bold text-gray-900">
-            Loja de Bijuterias
+            Acesso Restrito
           </CardTitle>
           <CardDescription>
             Faça login para acessar o sistema
@@ -114,22 +115,6 @@ export default function LoginPage() {
               )}
             </Button>
           </form>
-          
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600 mb-2">
-              Primeiro acesso? Crie o usuário admin:
-            </p>
-            <Button
-              onClick={setupAdmin}
-              variant="outline"
-              className="w-full"
-            >
-              Criar Admin
-            </Button>
-            <p className="text-xs text-gray-500 mt-2">
-              Email: admin@lojabyju.com | Senha: admin123
-            </p>
-          </div>
         </CardContent>
       </Card>
     </div>
