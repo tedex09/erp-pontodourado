@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useSession, signOut } from 'next-auth/react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +19,7 @@ import {
   DollarSign,
   Clock,
   UserCheck,
+  LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -115,6 +116,21 @@ export function MobileBottomNav() {
                   );
                 })}
               </div>
+              
+              {/* Logout Button */}
+              <div className="mt-6 pt-4 border-t border-gray-200">
+                <Button
+                  onClick={() => {
+                    signOut();
+                    setOpen(false);
+                  }}
+                  variant="outline"
+                  className="w-full flex items-center justify-center space-x-2 h-12 text-red-600 border-red-200 hover:bg-red-50"
+                >
+                  <LogOut className="h-5 w-5" />
+                  <span className="font-medium">Sair</span>
+                </Button>
+              </div>
             </div>
           </SheetContent>
         </Sheet>
@@ -132,7 +148,7 @@ export function MobileHeader() {
         <div className="flex items-center space-x-2">
           <Package className="h-6 w-6 text-indigo-600" />
           <span className="text-lg font-semibold text-gray-900">
-            Bijuterias
+            Ponto Dourado
           </span>
         </div>
         

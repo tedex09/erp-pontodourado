@@ -41,7 +41,7 @@ const settingsSchema = new mongoose.Schema<ISettings>(
     },
     companyName: {
       type: String,
-      default: 'Loja de Bijuterias',
+      default: 'Ponto Dourado',
       trim: true,
     },
     companyPhone: {

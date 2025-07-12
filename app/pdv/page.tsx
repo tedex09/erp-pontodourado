@@ -93,7 +93,7 @@ export default function PDVPage() {
   const [paymentForm, setPaymentForm] = useState({
     type: 'dinheiro' as 'dinheiro' | 'pix' | 'pixQrCode' | 'debitoCard' | 'creditoCard' | 'fiado',
     amount: 0,
-    receivedAmount: 0, // Novo campo para valor recebido
+    receivedAmount: 0,
   });
 
   const [discountForm, setDiscountForm] = useState({
@@ -202,10 +202,10 @@ export default function PDVPage() {
     debounce((term: string, category: string) => {
       let filtered = allProducts;
       
-      // Filtrar por categoria primeiro
+      // Filtrar por categoria primeiro - CORRIGIDO
       if (category && category !== 'all') {
         filtered = filtered.filter(product =>
-          product.categoryId === category
+          product.categoryId === category || product.category === category
         );
       }
       
@@ -292,7 +292,7 @@ export default function PDVPage() {
     return { fee, chargeAmount };
   };
 
-  // Calcular troco para pagamento em dinheiro
+  // Calcular troco para pagamento em dinheiro - MELHORADO
   const calculateChange = () => {
     if (paymentForm.type === 'dinheiro' && paymentForm.receivedAmount > 0) {
       const total = getTotal();
@@ -303,6 +303,17 @@ export default function PDVPage() {
     return 0;
   };
 
+  // Calcular troco total da venda finalizada
+  const getTotalChange = () => {
+    const dinheiroPayments = paymentMethods.filter(p => p.type === 'dinheiro');
+    if (dinheiroPayments.length === 0) return 0;
+    
+    const totalDinheiro = dinheiroPayments.reduce((sum, p) => sum + p.amount, 0);
+    const total = getTotal();
+    const change = totalDinheiro - total;
+    return change > 0 ? change : 0;
+  };
+
   const handleAddPayment = () => {
     if (paymentForm.amount <= 0) {
       showToast.error('Valor deve ser maior que zero');
@@ -310,6 +321,8 @@ export default function PDVPage() {
     }
 
     const remainingAmount = getTotal() - paymentMethods.reduce((sum, p) => sum + p.amount, 0);
+    
+    // PERMITIR VALOR ACIMA DO TOTAL PARA DINHEIRO
     if (paymentForm.amount > remainingAmount && paymentForm.type !== 'dinheiro') {
       showToast.error('Valor excede o restante a pagar');
       return;
@@ -352,8 +365,11 @@ export default function PDVPage() {
     }
 
     const totalPayments = paymentMethods.reduce((sum, p) => sum + p.amount, 0);
-    if (Math.abs(totalPayments - getTotal()) > 0.01) {
-      showToast.error('Valor dos pagamentos não confere com o total');
+    const total = getTotal();
+    
+    // PERMITIR FINALIZAR COM VALOR ACIMA DO TOTAL (TROCO)
+    if (totalPayments < total) {
+      showToast.error('Valor dos pagamentos é menor que o total da venda');
       return;
     }
     
@@ -390,7 +406,12 @@ export default function PDVPage() {
       });
       
       if (response.ok) {
-        showToast.success('Venda realizada com sucesso!');
+        const totalChange = getTotalChange();
+        if (totalChange > 0) {
+          showToast.success(`Venda realizada! Troco: ${formatCurrency(totalChange)}`);
+        } else {
+          showToast.success('Venda realizada com sucesso!');
+        }
         clearCart();
         fetchProducts();
       } else {
@@ -437,6 +458,7 @@ export default function PDVPage() {
   };
 
   const change = calculateChange();
+  const totalChange = getTotalChange();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -704,6 +726,18 @@ export default function PDVPage() {
                         <div className="flex justify-between text-lg font-bold text-purple-600">
                           <span>Total Final:</span>
                           <span>{formatCurrency(getFinalAmount())}</span>
+                        </div>
+                      )}
+
+                      {/* EXIBIR TROCO DESTACADO */}
+                      {totalChange > 0 && (
+                        <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                          <div className="flex justify-between items-center">
+                            <span className="text-green-800 font-medium">TROCO:</span>
+                            <span className="text-xl font-bold text-green-800">
+                              {formatCurrency(totalChange)}
+                            </span>
+                          </div>
                         </div>
                       )}
                       
@@ -1055,7 +1089,7 @@ export default function PDVPage() {
                       
                       <Button
                         onClick={completeSale}
-                        disabled={loading || cart.length === 0 || paymentMethods.reduce((sum, p) => sum + p.amount, 0) !== getTotal()}
+                        disabled={loading || cart.length === 0 || paymentMethods.reduce((sum, p) => sum + p.amount, 0) < getTotal()}
                         className="w-full bg-green-600 hover:bg-green-700 h-12 md:h-10 touch-button"
                       >
                         <CreditCard className="mr-2 h-4 w-4" />

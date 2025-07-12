@@ -74,11 +74,11 @@ export default function SettingsPage() {
   const { colors, companyName, setColors, setCompanyName, resetToDefault } = useThemeStore();
   
   const [settings, setSettings] = useState<SettingsData>({
-    defaultMargin: 300,
+    defaultMargin: 72,
     emailNotifications: false,
     whatsappNotifications: false,
     lowStockAlert: 5,
-    companyName: 'Loja de Bijuterias',
+    companyName: 'Ponto Dourado',
     companyPhone: '',
     companyEmail: '',
   });

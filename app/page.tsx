@@ -88,18 +88,42 @@ export default function DashboardPage() {
     try {
       setLoading(true);
       
-      // Fetch my sales today
-      const salesResponse = await fetch(`/api/reports?type=sales&period=day&sellerId=${session?.user?.id}`);
-      const salesData = salesResponse.ok ? await salesResponse.json() : { totalSales: 0, totalRevenue: 0 };
+      // Fetch my sales today - CORRIGIDO
+      const today = new Date();
+      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
       
-      // Fetch my customers served today
-      const customersResponse = await fetch(`/api/sales?sellerId=${session?.user?.id}&period=today`);
-      const todaySales = customersResponse.ok ? await customersResponse.json() : [];
+      const salesResponse = await fetch(`/api/sales?startDate=${startOfDay.toISOString()}&endDate=${endOfDay.toISOString()}&sellerId=${session?.user?.id}`);
+      const todaySales = salesResponse.ok ? await salesResponse.json() : [];
+      
+      // Calculate stats from today's sales
+      const todaySalesCount = todaySales.length;
+      const todayRevenue = todaySales.reduce((sum: number, sale: any) => sum + sale.total, 0);
       const uniqueCustomers = new Set(todaySales.map((sale: any) => sale.customerId).filter(Boolean)).size;
+      const averageTicket = todaySalesCount > 0 ? todayRevenue / todaySalesCount : 0;
       
-      // Fetch my top products today
-      const topProductsResponse = await fetch(`/api/reports?type=products&sellerId=${session?.user?.id}&period=day`);
-      const topProducts = topProductsResponse.ok ? await topProductsResponse.json() : [];
+      // Calculate top products from today's sales - CORRIGIDO
+      const productMap = new Map();
+      todaySales.forEach((sale: any) => {
+        sale.items.forEach((item: any) => {
+          const key = item.name;
+          if (productMap.has(key)) {
+            const existing = productMap.get(key);
+            existing.quantity += item.quantity;
+            existing.revenue += item.total;
+          } else {
+            productMap.set(key, {
+              name: item.name,
+              quantity: item.quantity,
+              revenue: item.total
+            });
+          }
+        });
+      });
+      
+      const topProducts = Array.from(productMap.values())
+        .sort((a, b) => b.quantity - a.quantity)
+        .slice(0, 3);
       
       // Fetch recent sales
       const recentSales = todaySales.slice(0, 3);
@@ -119,21 +143,19 @@ export default function DashboardPage() {
       const cashResponse = await fetch('/api/cash-register/current');
       const cashData = cashResponse.ok ? await cashResponse.json() : null;
       
-      const averageTicket = salesData.totalSales > 0 ? salesData.totalRevenue / salesData.totalSales : 0;
-      
       setData({
         myStats: {
-          todaySales: salesData.totalSales || 0,
-          todayRevenue: salesData.totalRevenue || 0,
+          todaySales: todaySalesCount,
+          todayRevenue: todayRevenue,
           customersServed: uniqueCustomers,
           averageTicket,
         },
-        topProducts: topProducts.slice(0, 3),
+        topProducts,
         recentSales,
         ranking: {
           position: myPosition || 0,
           totalSellers: allSellers.length,
-          myRevenue: salesData.totalRevenue || 0,
+          myRevenue: todayRevenue,
           topSeller: topSeller ? {
             name: topSeller.sellerName,
             revenue: topSeller.totalRevenue
