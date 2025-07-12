@@ -23,7 +23,8 @@ import {
   Percent,
   DollarSign,
   Calculator,
-  Filter
+  Filter,
+  Package
 } from 'lucide-react';
 import { showToast } from '@/components/ui/toast';
 
@@ -195,7 +196,7 @@ export default function PDVPage() {
         params.append('search', searchTerm);
       }
       
-      if (selectedCategory) {
+      if (selectedCategory && selectedCategory !== 'all') {
         params.append('category', selectedCategory);
       }
       
@@ -451,28 +452,29 @@ export default function PDVPage() {
 
                 <div className="flex items-center space-x-2">
                   <Filter className="h-4 w-4 text-gray-500" />
-                  <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                    <SelectTrigger className="w-48">
-                      <SelectValue placeholder="Filtrar por categoria" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">Todas as categorias</SelectItem>
-                      {categories.map((category) => (
-                        <SelectItem key={category._id} value={category._id}>
-                          {category.icon} {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
+                  <Select value={selectedCategory || 'all'} onValueChange={setSelectedCategory}>
+  <SelectTrigger className="w-48">
+    <SelectValue placeholder="Filtrar por categoria" />
+  </SelectTrigger>
+  <SelectContent>
+    <SelectItem value="all">Todas as categorias</SelectItem>
+    {categories.map((category) => (
+      <SelectItem key={category._id} value={category._id}>
+        {category.icon} {category.name}
+      </SelectItem>
+    ))}
+  </SelectContent>
                   </Select>
-                  {selectedCategory && (
+                  {selectedCategory && selectedCategory !== 'all' && (
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setSelectedCategory('')}
+                      onClick={() => setSelectedCategory('all')}
                     >
                       Limpar
                     </Button>
                   )}
+
                 </div>
               </div>
               
@@ -483,12 +485,16 @@ export default function PDVPage() {
                     className="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
                     onClick={() => handleAddToCart(product)}
                   >
-                    {product.image && (
+                    {product.image ? (
                       <img
                         src={product.image}
                         alt={product.name}
                         className="w-full h-24 object-cover rounded-md mb-3"
                       />
+                    ) : (
+                      <div className="w-full h-24 bg-gray-100 rounded-md mb-3 flex items-center justify-center">
+                        <Package className="h-8 w-8 text-gray-400" />
+                      </div>
                     )}
                     <div className="flex justify-between items-start mb-2">
                       <h3 className="font-medium text-gray-900 text-sm">{product.name}</h3>

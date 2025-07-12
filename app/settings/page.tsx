@@ -403,7 +403,7 @@ export default function SettingsPage() {
               <CardContent className="space-y-6">
                 <div className="space-y-2">
                   <Label className="text-base font-semibold">Responsabilidade pelas Taxas</Label>
-                  {/* <Select
+                  <Select
                     value={paymentSettings.feeResponsibility || 'customer'}
                     onValueChange={updateFeeResponsibility}
                   >
@@ -414,7 +414,7 @@ export default function SettingsPage() {
                       <SelectItem value="customer">Cliente paga as taxas</SelectItem>
                       <SelectItem value="store">Loja absorve as taxas</SelectItem>
                     </SelectContent>
-                  </Select> */}
+                  </Select>
                   <p className="text-sm text-gray-500">
                     Define se as taxas dos métodos de pagamento serão cobradas do cliente ou absorvidas pela loja.
                   </p>
