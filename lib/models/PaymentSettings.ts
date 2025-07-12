@@ -5,12 +5,26 @@ export interface IPaymentSettings {
   methods: {
     dinheiro: { enabled: boolean };
     pix: { enabled: boolean; fee: number; feeType: 'percentage' | 'fixed' };
-    pixQrCode: { enabled: boolean; fee: number; feeType: 'percentage' | 'fixed' };
-    debitoCard: { enabled: boolean; fee: number; feeType: 'percentage' | 'fixed' };
-    creditoCard: { enabled: boolean; fee: number; feeType: 'percentage' | 'fixed' };
+    pixQrCode: { 
+      enabled: boolean; 
+      fee: number; 
+      feeType: 'percentage' | 'fixed';
+      feeResponsibility: 'customer' | 'store';
+    };
+    debitoCard: { 
+      enabled: boolean; 
+      fee: number; 
+      feeType: 'percentage' | 'fixed';
+      feeResponsibility: 'customer' | 'store';
+    };
+    creditoCard: { 
+      enabled: boolean; 
+      fee: number; 
+      feeType: 'percentage' | 'fixed';
+      feeResponsibility: 'customer' | 'store';
+    };
     fiado: { enabled: boolean };
   };
-  feeResponsibility: 'customer' | 'store'; // Quem paga a taxa
   updatedBy: string;
   updatedAt: Date;
 }
@@ -28,27 +42,25 @@ const paymentSettingsSchema = new mongoose.Schema<IPaymentSettings>(
       },
       pixQrCode: {
         enabled: { type: Boolean, default: true },
-        fee: { type: Number, default: 0.99 }, // Taxa padrão PIX QR Code
-        feeType: { type: String, enum: ['percentage', 'fixed'], default: 'percentage' }
+        fee: { type: Number, default: 0.99 },
+        feeType: { type: String, enum: ['percentage', 'fixed'], default: 'percentage' },
+        feeResponsibility: { type: String, enum: ['customer', 'store'], default: 'customer' }
       },
       debitoCard: {
         enabled: { type: Boolean, default: true },
         fee: { type: Number, default: 1.99 },
-        feeType: { type: String, enum: ['percentage', 'fixed'], default: 'percentage' }
+        feeType: { type: String, enum: ['percentage', 'fixed'], default: 'percentage' },
+        feeResponsibility: { type: String, enum: ['customer', 'store'], default: 'customer' }
       },
       creditoCard: {
         enabled: { type: Boolean, default: true },
         fee: { type: Number, default: 3.09 },
-        feeType: { type: String, enum: ['percentage', 'fixed'], default: 'percentage' }
+        feeType: { type: String, enum: ['percentage', 'fixed'], default: 'percentage' },
+        feeResponsibility: { type: String, enum: ['customer', 'store'], default: 'customer' }
       },
       fiado: {
         enabled: { type: Boolean, default: true }
       }
-    },
-    feeResponsibility: {
-      type: String,
-      enum: ['customer', 'store'],
-      default: 'customer'
     },
     updatedBy: {
       type: mongoose.Schema.Types.ObjectId,

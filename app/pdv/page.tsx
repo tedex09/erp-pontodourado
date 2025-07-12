@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { usePDVStore } from '@/store/usePDVStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +10,6 @@ import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Search, 
   Plus, 
@@ -27,6 +26,7 @@ import {
   Package
 } from 'lucide-react';
 import { showToast } from '@/components/ui/toast';
+import { debounce } from 'lodash';
 
 interface Product {
   _id: string;
@@ -66,6 +66,7 @@ interface PaymentSettings {
 
 export default function PDVPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [paymentSettings, setPaymentSettings] = useState<PaymentSettings | null>(null);
@@ -129,15 +130,17 @@ export default function PDVPage() {
   } = usePDVStore();
 
   useEffect(() => {
-    fetchProducts();
-    fetchCategories();
-    fetchCustomers();
-    fetchPaymentSettings();
+    fetchInitialData();
   }, []);
 
-  useEffect(() => {
-    searchProducts();
-  }, [searchTerm, selectedCategory]);
+  const fetchInitialData = async () => {
+    await Promise.all([
+      fetchProducts(),
+      fetchCategories(),
+      fetchCustomers(),
+      fetchPaymentSettings(),
+    ]);
+  };
 
   const fetchProducts = async () => {
     try {
@@ -145,6 +148,7 @@ export default function PDVPage() {
       if (response.ok) {
         const data = await response.json();
         setProducts(data);
+        setAllProducts(data);
       }
     } catch (error) {
       showToast.error('Erro ao carregar produtos');
@@ -187,32 +191,32 @@ export default function PDVPage() {
     }
   };
 
-  const searchProducts = async () => {
-    try {
-      let url = '/api/products';
-      const params = new URLSearchParams();
+  // Debounced search function
+  const debouncedSearch = useCallback(
+    debounce((term: string, category: string) => {
+      let filtered = allProducts;
       
-      if (searchTerm.trim()) {
-        params.append('search', searchTerm);
+      if (term.trim()) {
+        filtered = filtered.filter(product =>
+          product.name.toLowerCase().includes(term.toLowerCase()) ||
+          product.code.toLowerCase().includes(term.toLowerCase())
+        );
       }
       
-      if (selectedCategory && selectedCategory !== 'all') {
-        params.append('category', selectedCategory);
+      if (category && category !== 'all') {
+        filtered = filtered.filter(product =>
+          product.category === category || product.categoryId === category
+        );
       }
       
-      if (params.toString()) {
-        url += '?' + params.toString();
-      }
-      
-      const response = await fetch(url);
-      if (response.ok) {
-        const data = await response.json();
-        setProducts(data);
-      }
-    } catch (error) {
-      showToast.error('Erro ao buscar produtos');
-    }
-  };
+      setProducts(filtered);
+    }, 300),
+    [allProducts]
+  );
+
+  useEffect(() => {
+    debouncedSearch(searchTerm, selectedCategory || 'all');
+  }, [searchTerm, selectedCategory, debouncedSearch]);
 
   const handleAddToCart = (product: Product) => {
     if (product.stock <= 0) {
@@ -417,21 +421,20 @@ export default function PDVPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900">PDV - Ponto de Venda</h1>
         <div className="flex items-center space-x-2">
           <ShoppingCart className="h-5 w-5 text-gray-500" />
           <Badge variant="secondary">{cart.length} itens</Badge>
         </div>
       </div>
       
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Products Section */}
         <div className="lg:col-span-2 space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle>Produtos</CardTitle>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg">Produtos</CardTitle>
               <CardDescription>
                 Busque e adicione produtos ao carrinho
               </CardDescription>
@@ -439,31 +442,31 @@ export default function PDVPage() {
             <CardContent>
               <div className="space-y-4">
                 <div className="flex space-x-2">
-                  <Input
-                    placeholder="Buscar por nome ou código..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="flex-1"
-                  />
-                  <Button onClick={searchProducts} variant="outline" size="icon">
-                    <Search className="h-4 w-4" />
-                  </Button>
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      placeholder="Buscar por nome ou código..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
                 </div>
 
                 <div className="flex items-center space-x-2">
                   <Filter className="h-4 w-4 text-gray-500" />
                   <Select value={selectedCategory || 'all'} onValueChange={setSelectedCategory}>
-  <SelectTrigger className="w-48">
-    <SelectValue placeholder="Filtrar por categoria" />
-  </SelectTrigger>
-  <SelectContent>
-    <SelectItem value="all">Todas as categorias</SelectItem>
-    {categories.map((category) => (
-      <SelectItem key={category._id} value={category._id}>
-        {category.icon} {category.name}
-      </SelectItem>
-    ))}
-  </SelectContent>
+                    <SelectTrigger className="w-48">
+                      <SelectValue placeholder="Filtrar por categoria" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas as categorias</SelectItem>
+                      {categories.map((category) => (
+                        <SelectItem key={category._id} value={category._id}>
+                          {category.icon} {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
                   </Select>
                   {selectedCategory && selectedCategory !== 'all' && (
                     <Button
@@ -474,43 +477,51 @@ export default function PDVPage() {
                       Limpar
                     </Button>
                   )}
-
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto mt-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-96 overflow-y-auto mt-4">
                 {products.map((product) => (
                   <div
                     key={product._id}
-                    className="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
+                    className="border rounded-lg p-3 hover:shadow-md transition-shadow cursor-pointer bg-white"
                     onClick={() => handleAddToCart(product)}
                   >
                     {product.image ? (
                       <img
                         src={product.image}
                         alt={product.name}
-                        className="w-full h-24 object-cover rounded-md mb-3"
+                        className="w-full h-16 object-cover rounded-md mb-2"
                       />
                     ) : (
-                      <div className="w-full h-24 bg-gray-100 rounded-md mb-3 flex items-center justify-center">
-                        <Package className="h-8 w-8 text-gray-400" />
+                      <div className="w-full h-16 bg-gray-100 rounded-md mb-2 flex items-center justify-center">
+                        <Package className="h-6 w-6 text-gray-400" />
                       </div>
                     )}
-                    <div className="flex justify-between items-start mb-2">
-                      <h3 className="font-medium text-gray-900 text-sm">{product.name}</h3>
-                      <Badge variant={product.stock > 0 ? 'default' : 'destructive'}>
-                        {product.stock}
-                      </Badge>
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-start">
+                        <h3 className="font-medium text-xs text-gray-900 line-clamp-2 leading-tight">
+                          {product.name}
+                        </h3>
+                        <Badge variant={product.stock > 0 ? 'default' : 'destructive'} className="text-xs px-1 py-0">
+                          {product.stock}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-gray-500">{product.code}</p>
+                      <p className="text-sm font-bold text-green-600">
+                        {formatCurrency(product.salePrice)}
+                      </p>
                     </div>
-                    <p className="text-xs text-gray-500 mb-2">
-                      {product.code} • {product.category}
-                    </p>
-                    <p className="text-lg font-bold text-green-600">
-                      {formatCurrency(product.salePrice)}
-                    </p>
                   </div>
                 ))}
               </div>
+              
+              {products.length === 0 && (
+                <div className="text-center py-8">
+                  <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">Nenhum produto encontrado</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -518,8 +529,8 @@ export default function PDVPage() {
         {/* Cart Section */}
         <div className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle>Carrinho</CardTitle>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg">Carrinho</CardTitle>
             </CardHeader>
             <CardContent>
               {cart.length === 0 ? (
@@ -528,90 +539,96 @@ export default function PDVPage() {
                 </p>
               ) : (
                 <div className="space-y-4">
-                  {cart.map((item) => (
-                    <div key={item.id} className="border rounded-lg p-3">
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex-1">
-                          <h4 className="font-medium text-sm">{item.name}</h4>
-                          <p className="text-xs text-gray-500">
-                            {formatCurrency(item.price)} cada
-                          </p>
-                          {item.discount > 0 && (
-                            <p className="text-xs text-green-600">
-                              Desconto: {item.discountType === 'percentage' ? `${item.discount}%` : formatCurrency(item.discount)}
+                  <div className="max-h-64 overflow-y-auto space-y-3">
+                    {cart.map((item) => (
+                      <div key={item.id} className="border rounded-lg p-3 bg-gray-50">
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex-1">
+                            <h4 className="font-medium text-sm">{item.name}</h4>
+                            <p className="text-xs text-gray-500">
+                              {formatCurrency(item.price)} cada
                             </p>
-                          )}
+                            {item.discount > 0 && (
+                              <p className="text-xs text-green-600">
+                                Desconto: {item.discountType === 'percentage' ? `${item.discount}%` : formatCurrency(item.discount)}
+                              </p>
+                            )}
+                          </div>
+                          
+                          <div className="flex items-center space-x-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                              className="h-6 w-6 p-0"
+                            >
+                              <Minus className="h-3 w-3" />
+                            </Button>
+                            <span className="w-8 text-center text-sm">
+                              {item.quantity}
+                            </span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                              disabled={item.quantity >= item.stock}
+                              className="h-6 w-6 p-0"
+                            >
+                              <Plus className="h-3 w-3" />
+                            </Button>
+                          </div>
                         </div>
                         
-                        <div className="flex items-center space-x-1">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                          >
-                            <Minus className="h-3 w-3" />
-                          </Button>
-                          <span className="w-8 text-center text-sm">
-                            {item.quantity}
+                        <div className="flex justify-between items-center">
+                          <div className="flex space-x-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedItemForDiscount(item.id);
+                                setDiscountForm({ amount: item.discount, type: item.discountType });
+                                setShowDiscountDialog(true);
+                              }}
+                              className="h-6 px-2"
+                            >
+                              <Percent className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => removeFromCart(item.id)}
+                              className="h-6 px-2"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                          <span className="font-medium text-sm">
+                            {formatCurrency((item.price * item.quantity) - (item.discountType === 'percentage' 
+                              ? (item.price * item.quantity * item.discount) / 100 
+                              : item.discount))}
                           </span>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                            disabled={item.quantity >= item.stock}
-                          >
-                            <Plus className="h-3 w-3" />
-                          </Button>
                         </div>
                       </div>
-                      
-                      <div className="flex justify-between items-center">
-                        <div className="flex space-x-1">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setSelectedItemForDiscount(item.id);
-                              setDiscountForm({ amount: item.discount, type: item.discountType });
-                              setShowDiscountDialog(true);
-                            }}
-                          >
-                            <Percent className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => removeFromCart(item.id)}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
-                        <span className="font-medium">
-                          {formatCurrency((item.price * item.quantity) - (item.discountType === 'percentage' 
-                            ? (item.price * item.quantity * item.discount) / 100 
-                            : item.discount))}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                   
                   <Separator />
                   
                   <div className="space-y-2">
-                    <div className="flex justify-between">
+                    <div className="flex justify-between text-sm">
                       <span>Subtotal:</span>
                       <span>{formatCurrency(getSubtotal())}</span>
                     </div>
                     
                     {discount > 0 && (
-                      <div className="flex justify-between text-red-600">
+                      <div className="flex justify-between text-red-600 text-sm">
                         <span>Desconto:</span>
                         <span>-{formatCurrency(getDiscountAmount())}</span>
                       </div>
                     )}
                     
                     {addition > 0 && (
-                      <div className="flex justify-between text-blue-600">
+                      <div className="flex justify-between text-blue-600 text-sm">
                         <span>Acréscimo:</span>
                         <span>+{formatCurrency(getAdditionAmount())}</span>
                       </div>
@@ -623,7 +640,7 @@ export default function PDVPage() {
                     </div>
                     
                     {getTotalFees() > 0 && (
-                      <div className="flex justify-between text-orange-600">
+                      <div className="flex justify-between text-orange-600 text-sm">
                         <span>Taxas:</span>
                         <span>+{formatCurrency(getTotalFees())}</span>
                       </div>
@@ -740,7 +757,7 @@ export default function PDVPage() {
                     <div className="flex space-x-2">
                       <Dialog open={showDiscountDialog} onOpenChange={setShowDiscountDialog}>
                         <DialogTrigger asChild>
-                          <Button variant="outline" className="flex-1">
+                          <Button variant="outline" className="flex-1" size="sm">
                             <Percent className="mr-2 h-4 w-4" />
                             Desconto
                           </Button>
@@ -798,7 +815,7 @@ export default function PDVPage() {
 
                       <Dialog open={showAdditionDialog} onOpenChange={setShowAdditionDialog}>
                         <DialogTrigger asChild>
-                          <Button variant="outline" className="flex-1">
+                          <Button variant="outline" className="flex-1" size="sm">
                             <Plus className="mr-2 h-4 w-4" />
                             Acréscimo
                           </Button>
@@ -852,9 +869,9 @@ export default function PDVPage() {
                       <Label className="text-sm font-medium">Pagamentos</Label>
                       
                       {paymentMethods.map((payment, index) => (
-                        <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                        <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm">
                           <div>
-                            <span className="text-sm font-medium">
+                            <span className="font-medium">
                               {getPaymentMethodLabel(payment.type)}
                             </span>
                             <p className="text-xs text-gray-500">
@@ -875,6 +892,7 @@ export default function PDVPage() {
                             size="sm"
                             variant="destructive"
                             onClick={() => removePaymentMethod(index)}
+                            className="h-6 px-2"
                           >
                             <Trash2 className="h-3 w-3" />
                           </Button>
@@ -883,7 +901,7 @@ export default function PDVPage() {
 
                       <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
                         <DialogTrigger asChild>
-                          <Button variant="outline" className="w-full">
+                          <Button variant="outline" className="w-full" size="sm">
                             <Plus className="mr-2 h-4 w-4" />
                             Adicionar Pagamento
                           </Button>

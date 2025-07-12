@@ -54,6 +54,7 @@
     "eslint-config-next": "13.5.1",
     "framer-motion": "^12.23.3",
     "input-otp": "^1.2.4",
+    "lodash": "^4.17.21",
     "lucide-react": "^0.446.0",
     "mongoose": "^8.16.3",
     "next": "13.5.1",
@@ -76,5 +77,8 @@
     "vaul": "^0.9.9",
     "zod": "^3.25.76",
     "zustand": "^5.0.6"
+  },
+  "devDependencies": {
+    "@types/lodash": "^4.17.20"
   }
 }

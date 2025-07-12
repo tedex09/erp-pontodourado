@@ -12,6 +12,8 @@ import {
   BarChart3,
   Settings,
   Store,
+  DollarSign,
+  Clock,
 } from 'lucide-react';
 
 const navigation = [
@@ -21,6 +23,8 @@ const navigation = [
   { name: 'Produtos', href: '/products', icon: Package, roles: ['admin', 'vendedor', 'estoque'] },
   { name: 'Categorias', href: '/categories', icon: Store, roles: ['admin'] },
   { name: 'Estoque', href: '/inventory', icon: Store, roles: ['admin', 'estoque'] },
+  { name: 'Fiados', href: '/fiados', icon: DollarSign, roles: ['admin', 'vendedor', 'caixa'] },
+  { name: 'Ponto', href: '/ponto', icon: Clock, roles: ['admin', 'vendedor', 'caixa', 'estoque'] },
   { name: 'Campanhas', href: '/campaigns', icon: Users, roles: ['admin', 'vendedor'] },
   { name: 'Funcionários', href: '/employees', icon: UserCheck, roles: ['admin'] },
   { name: 'Funções', href: '/roles', icon: UserCheck, roles: ['admin'] },

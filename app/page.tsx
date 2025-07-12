@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { TrendingUp, Users, Package, DollarSign, AlertTriangle, ShoppingCart, Calendar } from 'lucide-react';
+import { TrendingUp, Users, Package, DollarSign, AlertTriangle, ShoppingCart, Calendar, Clock } from 'lucide-react';
 
 interface DashboardData {
   salesData: {
@@ -43,6 +43,10 @@ interface DashboardData {
     sales: number;
     revenue: number;
   }>;
+  bestWeekday?: {
+    day: string;
+    average: number;
+  };
 }
 
 export default function DashboardPage() {
@@ -88,6 +92,10 @@ export default function DashboardPage() {
       const dailySalesResponse = await fetch('/api/reports?type=daily&days=7');
       const dailySales = dailySalesResponse.ok ? await dailySalesResponse.json() : [];
       
+      // Fetch best weekday
+      const bestWeekdayResponse = await fetch('/api/reports?type=weekday');
+      const bestWeekday = bestWeekdayResponse.ok ? await bestWeekdayResponse.json() : null;
+      
       // Calculate low stock products
       const lowStockItems = products.filter((p: any) => p.stock <= p.minStock);
       
@@ -107,6 +115,7 @@ export default function DashboardPage() {
         recentSales,
         lowStockItems: lowStockItems.slice(0, 5),
         dailySales,
+        bestWeekday,
       });
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -187,6 +196,17 @@ export default function DashboardPage() {
     },
   ];
 
+  // Add best weekday card if data is available
+  if (data.bestWeekday) {
+    cards.push({
+      title: 'Melhor Dia da Semana',
+      value: `${data.bestWeekday.day} | ${formatCurrency(data.bestWeekday.average)}`,
+      icon: Calendar,
+      color: 'text-cyan-600',
+      bgColor: 'bg-cyan-50',
+    });
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -196,7 +216,7 @@ export default function DashboardPage() {
         </p>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {cards.map((card, index) => (
           <Card key={index} className="hover:shadow-md transition-shadow duration-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

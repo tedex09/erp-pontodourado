@@ -195,4 +195,45 @@ export class ReportService {
       revenue: item.revenue
     }));
   }
+
+  static async getBestWeekday() {
+    await connectMongo();
+
+    const pipeline = [
+      {
+        $group: {
+          _id: { $dayOfWeek: '$createdAt' },
+          totalRevenue: { $sum: '$total' },
+          totalSales: { $sum: 1 }
+        }
+      },
+      {
+        $addFields: {
+          averageRevenue: { $divide: ['$totalRevenue', '$totalSales'] }
+        }
+      },
+      { $sort: { totalRevenue: -1 } },
+      { $limit: 1 }
+    ];
+
+    const result = await Sale.aggregate(pipeline);
+    
+    if (result.length === 0) {
+      return null;
+    }
+
+    const weekdays = [
+      '', 'Domingo', 'Segunda-feira', 'Terça-feira', 
+      'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'
+    ];
+
+    const bestDay = result[0];
+    
+    return {
+      day: weekdays[bestDay._id],
+      average: bestDay.averageRevenue,
+      totalRevenue: bestDay.totalRevenue,
+      totalSales: bestDay.totalSales
+    };
+  }
 }

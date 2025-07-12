@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import connectMongo from '@/lib/mongodb';
-import { Sale, Product, Customer } from '@/lib/models';
+import { Sale, Product, Customer, Fiado } from '@/lib/models';
 
 export async function GET(req: NextRequest) {
   try {
@@ -105,6 +105,19 @@ export async function POST(req: NextRequest) {
           },
         }
       );
+    }
+    
+    // Create fiado record if payment includes fiado
+    const fiadoPayment = data.paymentMethods?.find((pm: any) => pm.type === 'fiado');
+    if (fiadoPayment && data.customerId) {
+      const fiado = new Fiado({
+        saleId: sale._id,
+        customerId: data.customerId,
+        customerName: data.customerName,
+        amount: fiadoPayment.amount,
+        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+      });
+      await fiado.save();
     }
     
     return NextResponse.json(sale, { status: 201 });

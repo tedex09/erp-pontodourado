@@ -46,6 +46,9 @@ export async function GET(req: NextRequest) {
         const days = parseInt(searchParams.get('days') || '30');
         data = await ReportService.getDailySales(days);
         break;
+      case 'weekday':
+        data = await ReportService.getBestWeekday();
+        break;
       default:
         return NextResponse.json({ error: 'Invalid report type' }, { status: 400 });
     }

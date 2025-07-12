@@ -15,12 +15,18 @@ interface Category {
   name: string;
   icon: string;
   description?: string;
+  defaultMargin: number;
   active: boolean;
   createdAt: string;
 }
 
+interface Settings {
+  defaultMargin: number;
+}
+
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
+  const [settings, setSettings] = useState<Settings | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showDialog, setShowDialog] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -37,7 +43,15 @@ export default function CategoriesPage() {
 
   useEffect(() => {
     fetchCategories();
+    fetchSettings();
   }, []);
+
+  useEffect(() => {
+    // Atualizar margem padrão quando as configurações carregarem
+    if (settings && !editingCategory) {
+      setFormData(prev => ({ ...prev, defaultMargin: settings.defaultMargin }));
+    }
+  }, [settings, editingCategory]);
 
   const fetchCategories = async () => {
     try {
@@ -49,6 +63,18 @@ export default function CategoriesPage() {
     } catch (error) {
       console.error('Error fetching categories:', error);
       showToast.error('Erro ao carregar categorias');
+    }
+  };
+
+  const fetchSettings = async () => {
+    try {
+      const response = await fetch('/api/settings');
+      if (response.ok) {
+        const data = await response.json();
+        setSettings(data);
+      }
+    } catch (error) {
+      console.error('Error fetching settings:', error);
     }
   };
 
@@ -130,7 +156,7 @@ export default function CategoriesPage() {
       name: '',
       icon: '💎',
       description: '',
-      defaultMargin: 300,
+      defaultMargin: settings?.defaultMargin || 300,
     });
   };
 
@@ -145,6 +171,12 @@ export default function CategoriesPage() {
     setShowDialog(true);
   };
 
+  const handleNewCategory = () => {
+    setEditingCategory(null);
+    resetForm();
+    setShowDialog(true);
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-BR');
   };
@@ -155,7 +187,7 @@ export default function CategoriesPage() {
         <h1 className="text-3xl font-bold text-gray-900">Categorias</h1>
         <Dialog open={showDialog} onOpenChange={setShowDialog}>
           <DialogTrigger asChild>
-            <Button className="bg-indigo-600 hover:bg-indigo-700">
+            <Button onClick={handleNewCategory} className="bg-indigo-600 hover:bg-indigo-700">
               <Plus className="mr-2 h-4 w-4" />
               Nova Categoria
             </Button>
@@ -224,7 +256,11 @@ export default function CategoriesPage() {
                 />
                 <p className="text-sm text-gray-500">
                   Esta margem será usada como padrão para produtos desta categoria.
-                  Exemplo: 300% significa que o preço sugerido será 4x o custo.
+                  {settings && (
+                    <span className="block mt-1">
+                      <strong>Sugestão do sistema:</strong> {settings.defaultMargin}%
+                    </span>
+                  )}
                 </p>
               </div>
               
@@ -283,10 +319,10 @@ export default function CategoriesPage() {
                         {category.description && (
                           <p className="text-sm text-gray-500 mt-1">{category.description}</p>
                         )}
+                        <p className="text-sm text-indigo-600 font-medium mt-1">
+                          Margem padrão: {category.defaultMargin}%
+                        </p>
                       </div>
-                      <p className="text-sm text-indigo-600 font-medium mt-1">
-                        Margem padrão: {category.defaultMargin}%
-                      </p>
                     </div>
                   </div>
                   

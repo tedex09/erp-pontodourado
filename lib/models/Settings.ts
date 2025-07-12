@@ -9,6 +9,12 @@ export interface ISettings {
   companyName: string;
   companyPhone?: string;
   companyEmail?: string;
+  location?: {
+    latitude: number;
+    longitude: number;
+    radius: number; // metros
+    address?: string;
+  };
   updatedBy: string;
   updatedAt: Date;
 }
@@ -46,6 +52,22 @@ const settingsSchema = new mongoose.Schema<ISettings>(
       type: String,
       trim: true,
       lowercase: true,
+    },
+    location: {
+      latitude: {
+        type: Number,
+      },
+      longitude: {
+        type: Number,
+      },
+      radius: {
+        type: Number,
+        default: 100, // 100 metros
+      },
+      address: {
+        type: String,
+        trim: true,
+      },
     },
     updatedBy: {
       type: mongoose.Schema.Types.ObjectId,

@@ -10,6 +10,9 @@ import PaymentSettings from './PaymentSettings';
 import StockMovement from './StockMovement';
 import Campaign from './Campaign';
 import Referral from './Referral';
+import Fiado from './Fiado';
+import TimeTracking from './TimeTracking';
+import CashRegister from './CashRegister';
 
 // Export all models to ensure they are registered
 export {
@@ -24,6 +27,9 @@ export {
   StockMovement,
   Campaign,
   Referral,
+  Fiado,
+  TimeTracking,
+  CashRegister,
 };
 
 // Function to ensure all models are registered
@@ -42,5 +48,8 @@ export function registerModels() {
     StockMovement,
     Campaign,
     Referral,
+    Fiado,
+    TimeTracking,
+    CashRegister,
   };
 }
