@@ -73,7 +73,7 @@ export default function DashboardPage() {
   // Redirect admins to the full dashboard
   useEffect(() => {
     if (session?.user?.role === 'admin') {
-      window.location.href = '/admin-dashboard';
+      router.push('/admin-dashboard');
       return;
     }
   }, [session]);

@@ -22,8 +22,10 @@ interface ThemeColors {
 interface ThemeState {
   colors: ThemeColors;
   companyName: string;
+  logo: string;
   setColors: (colors: Partial<ThemeColors>) => void;
   setCompanyName: (name: string) => void;
+  setLogo: (logo: string) => void;
   resetToDefault: () => void;
 }
 
@@ -48,6 +50,7 @@ export const useThemeStore = create<ThemeState>()(
     (set) => ({
       colors: defaultColors,
       companyName: 'Loja de Bijuterias',
+      logo: '',
       
       setColors: (newColors) =>
         set((state) => ({
@@ -57,10 +60,14 @@ export const useThemeStore = create<ThemeState>()(
       setCompanyName: (name) =>
         set({ companyName: name }),
       
+      setLogo: (logo) =>
+        set({ logo }),
+      
       resetToDefault: () =>
         set({
           colors: defaultColors,
-          companyName: 'Loja de Bijuterias',
+          companyName: 'Ponto Dourado',
+          logo: '',
         }),
     }),
     {

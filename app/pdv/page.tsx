@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { 
   Search, 
   Plus, 
@@ -82,6 +83,7 @@ export default function PDVPage() {
   const [showDiscountDialog, setShowDiscountDialog] = useState(false);
   const [showAdditionDialog, setShowAdditionDialog] = useState(false);
   const [selectedItemForDiscount, setSelectedItemForDiscount] = useState<string | null>(null);
+  const [showCartSheet, setShowCartSheet] = useState(false);
   
   const [newCustomer, setNewCustomer] = useState({
     name: '',
@@ -197,16 +199,17 @@ export default function PDVPage() {
     }
   };
 
-  // Busca com filtro melhorado (ignora acentos)
+  // Busca com filtro melhorado (ignora acentos) - CORRIGIDO
   const debouncedSearch = useCallback(
     debounce((term: string, category: string) => {
       let filtered = allProducts;
       
-      // Filtrar por categoria primeiro - CORRIGIDO
+      // Filtrar por categoria primeiro - CORRIGIDO para usar categoryId
       if (category && category !== 'all') {
-        filtered = filtered.filter(product =>
-          product.categoryId === category || product.category === category
-        );
+        filtered = filtered.filter(product => {
+          // Verifica tanto categoryId quanto category para compatibilidade
+          return product.categoryId === category || product.category === category;
+        });
       }
       
       // Depois filtrar por termo de busca (ignorando acentos)
@@ -292,7 +295,6 @@ export default function PDVPage() {
     return { fee, chargeAmount };
   };
 
-  // Calcular troco para pagamento em dinheiro - MELHORADO
   const calculateChange = () => {
     if (paymentForm.type === 'dinheiro' && paymentForm.receivedAmount > 0) {
       const total = getTotal();
@@ -303,7 +305,6 @@ export default function PDVPage() {
     return 0;
   };
 
-  // Calcular troco total da venda finalizada
   const getTotalChange = () => {
     const dinheiroPayments = paymentMethods.filter(p => p.type === 'dinheiro');
     if (dinheiroPayments.length === 0) return 0;
@@ -322,7 +323,6 @@ export default function PDVPage() {
 
     const remainingAmount = getTotal() - paymentMethods.reduce((sum, p) => sum + p.amount, 0);
     
-    // PERMITIR VALOR ACIMA DO TOTAL PARA DINHEIRO
     if (paymentForm.amount > remainingAmount && paymentForm.type !== 'dinheiro') {
       showToast.error('Valor excede o restante a pagar');
       return;
@@ -367,7 +367,6 @@ export default function PDVPage() {
     const totalPayments = paymentMethods.reduce((sum, p) => sum + p.amount, 0);
     const total = getTotal();
     
-    // PERMITIR FINALIZAR COM VALOR ACIMA DO TOTAL (TROCO)
     if (totalPayments < total) {
       showToast.error('Valor dos pagamentos é menor que o total da venda');
       return;
@@ -414,6 +413,7 @@ export default function PDVPage() {
         }
         clearCart();
         fetchProducts();
+        setShowCartSheet(false);
       } else {
         const error = await response.json();
         showToast.error(error.error || 'Erro ao realizar venda');
@@ -430,7 +430,7 @@ export default function PDVPage() {
     
     return Object.entries(paymentSettings.methods)
       .filter(([_, config]) => config.enabled)
-      .filter(([method]) => method !== 'fiado' || customer) // Fiado só se tiver cliente
+      .filter(([method]) => method !== 'fiado' || customer)
       .map(([method, config]) => ({
         value: method,
         label: getPaymentMethodLabel(method),
@@ -455,6 +455,13 @@ export default function PDVPage() {
       style: 'currency',
       currency: 'BRL',
     }).format(value);
+  };
+
+  const formatTime = (dateString: string) => {
+    return new Date(dateString).toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   };
 
   const change = calculateChange();
@@ -503,7 +510,7 @@ export default function PDVPage() {
         </div>
       </div>
 
-      <div className="p-4 pb-20 md:pb-4">
+      <div className="p-4 pb-32 md:pb-4">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Products Section */}
           <div className="lg:col-span-2 space-y-4">
@@ -556,6 +563,7 @@ export default function PDVPage() {
                   </div>
                 </div>
                 
+                {/* Grid de produtos - 2 colunas no mobile, mais no desktop */}
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-96 overflow-y-auto mt-4">
                   {products.map((product) => (
                     <div
@@ -602,8 +610,8 @@ export default function PDVPage() {
             </Card>
           </div>
           
-          {/* Cart Section */}
-          <div className="space-y-4">
+          {/* Desktop Cart Section */}
+          <div className="hidden lg:block space-y-4">
             <Card>
               <CardHeader className="pb-4">
                 <CardTitle className="text-lg">Carrinho</CardTitle>
@@ -729,7 +737,6 @@ export default function PDVPage() {
                         </div>
                       )}
 
-                      {/* EXIBIR TROCO DESTACADO */}
                       {totalChange > 0 && (
                         <div className="p-3 bg-green-50 rounded-lg border border-green-200">
                           <div className="flex justify-between items-center">
@@ -740,7 +747,6 @@ export default function PDVPage() {
                           </div>
                         </div>
                       )}
-                      
                     </div>
                     
                     <Separator />
@@ -1025,7 +1031,6 @@ export default function PDVPage() {
                                 </Select>
                               </div>
                               
-                              
                               <div className="space-y-2">
                                 <Label>Valor do Pagamento</Label>
                                 <Input
@@ -1040,7 +1045,6 @@ export default function PDVPage() {
                                 </p>
                               </div>
                               
-                              {/* Exibir troco se for dinheiro */}
                               {paymentForm.type === 'dinheiro' && change > 0 && (
                                 <div className="p-4 bg-green-50 rounded-lg border border-green-200">
                                   <div className="text-center">
@@ -1102,6 +1106,555 @@ export default function PDVPage() {
             </Card>
           </div>
         </div>
+      </div>
+
+      {/* Mobile Bottom Actions */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 p-4 space-y-3">
+        {/* Cart Button */}
+        <Sheet open={showCartSheet} onOpenChange={setShowCartSheet}>
+          <SheetTrigger asChild>
+            <Button 
+              className="w-full h-14 bg-indigo-600 hover:bg-indigo-700 text-lg font-semibold"
+              disabled={cart.length === 0}
+            >
+              <ShoppingCart className="mr-2 h-5 w-5" />
+              Ver Carrinho ({cart.length})
+              {cart.length > 0 && (
+                <span className="ml-2 text-sm">
+                  • {formatCurrency(getTotal())}
+                </span>
+              )}
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="bottom" className="h-[90vh] overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle>Carrinho de Compras</SheetTitle>
+            </SheetHeader>
+            
+            <div className="mt-6 space-y-4">
+              {cart.length === 0 ? (
+                <p className="text-center text-gray-500 py-8">
+                  Carrinho vazio
+                </p>
+              ) : (
+                <>
+                  {/* Cart Items */}
+                  <div className="space-y-3 max-h-64 overflow-y-auto">
+                    {cart.map((item) => (
+                      <div key={item.id} className="border rounded-lg p-3 bg-gray-50">
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex-1">
+                            <h4 className="font-medium text-sm">{item.name}</h4>
+                            <p className="text-xs text-gray-500">
+                              {formatCurrency(item.price)} cada
+                            </p>
+                            {item.discount > 0 && (
+                              <p className="text-xs text-green-600">
+                                Desconto: {item.discountType === 'percentage' ? `${item.discount}%` : formatCurrency(item.discount)}
+                              </p>
+                            )}
+                          </div>
+                          
+                          <div className="flex items-center space-x-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                              className="h-8 w-8 p-0"
+                            >
+                              <Minus className="h-3 w-3" />
+                            </Button>
+                            <span className="w-8 text-center text-sm">
+                              {item.quantity}
+                            </span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                              disabled={item.quantity >= item.stock}
+                              className="h-8 w-8 p-0"
+                            >
+                              <Plus className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                        
+                        <div className="flex justify-between items-center">
+                          <div className="flex space-x-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedItemForDiscount(item.id);
+                                setDiscountForm({ amount: item.discount, type: item.discountType });
+                                setShowDiscountDialog(true);
+                              }}
+                              className="h-8 px-2"
+                            >
+                              <Percent className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => removeFromCart(item.id)}
+                              className="h-8 px-2"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                          <span className="font-medium text-sm">
+                            {formatCurrency((item.price * item.quantity) - (item.discountType === 'percentage' 
+                              ? (item.price * item.quantity * item.discount) / 100 
+                              : item.discount))}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <Separator />
+                  
+                  {/* Totals */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Subtotal:</span>
+                      <span>{formatCurrency(getSubtotal())}</span>
+                    </div>
+                    
+                    {discount > 0 && (
+                      <div className="flex justify-between text-red-600 text-sm">
+                        <span>Desconto:</span>
+                        <span>-{formatCurrency(getDiscountAmount())}</span>
+                      </div>
+                    )}
+                    
+                    {addition > 0 && (
+                      <div className="flex justify-between text-blue-600 text-sm">
+                        <span>Acréscimo:</span>
+                        <span>+{formatCurrency(getAdditionAmount())}</span>
+                      </div>
+                    )}
+                    
+                    <div className="flex justify-between text-lg font-bold">
+                      <span>Total:</span>
+                      <span>{formatCurrency(getTotal())}</span>
+                    </div>
+                    
+                    {getTotalFees() > 0 && (
+                      <div className="flex justify-between text-orange-600 text-sm">
+                        <span>Taxas:</span>
+                        <span>+{formatCurrency(getTotalFees())}</span>
+                      </div>
+                    )}
+                    
+                    {getFinalAmount() !== getTotal() && (
+                      <div className="flex justify-between text-lg font-bold text-purple-600">
+                        <span>Total Final:</span>
+                        <span>{formatCurrency(getFinalAmount())}</span>
+                      </div>
+                    )}
+
+                    {totalChange > 0 && (
+                      <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                        <div className="flex justify-between items-center">
+                          <span className="text-green-800 font-medium">TROCO:</span>
+                          <span className="text-xl font-bold text-green-800">
+                            {formatCurrency(totalChange)}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <Separator />
+                  
+                  {/* Actions */}
+                  <div className="space-y-3">
+                    {/* Customer Selection */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Cliente</Label>
+                      <div className="flex space-x-2">
+                        <Select
+                          value={customer?.id || 'none'}
+                          onValueChange={(value) => {
+                            if (value === 'none') {
+                              setCustomer(null);
+                              return;
+                            }
+                            const selectedCustomer = customers.find(c => c._id === value);
+                            setCustomer(selectedCustomer ? {
+                              id: selectedCustomer._id,
+                              name: selectedCustomer.name,
+                              phone: selectedCustomer.phone,
+                              email: selectedCustomer.email,
+                            } : null);
+                          }}
+                        >
+                          <SelectTrigger className="flex-1 h-12">
+                            <SelectValue placeholder="Selecionar cliente" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Sem cliente</SelectItem>
+                            {customers.map((c) => (
+                              <SelectItem key={c._id} value={c._id}>
+                                {c.name} - {c.phone}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Dialog open={showCustomerDialog} onOpenChange={setShowCustomerDialog}>
+                          <DialogTrigger asChild>
+                            <Button variant="outline" size="icon" className="h-12 w-12">
+                              <UserPlus className="h-4 w-4" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Novo Cliente</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <div className="space-y-2">
+                                <Label>Nome *</Label>
+                                <Input
+                                  value={newCustomer.name}
+                                  onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })}
+                                  className="h-12"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Telefone *</Label>
+                                <Input
+                                  value={newCustomer.phone}
+                                  onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })}
+                                  className="h-12"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>E-mail</Label>
+                                <Input
+                                  type="email"
+                                  value={newCustomer.email}
+                                  onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })}
+                                  className="h-12"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Preferência</Label>
+                                <Select
+                                  value={newCustomer.preference}
+                                  onValueChange={(value: any) => setNewCustomer({ ...newCustomer, preference: value })}
+                                >
+                                  <SelectTrigger className="h-12">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="todos">Todos</SelectItem>
+                                    <SelectItem value="masculino">Masculino</SelectItem>
+                                    <SelectItem value="feminino">Feminino</SelectItem>
+                                    <SelectItem value="infantil">Infantil</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="flex space-x-2">
+                                <Button onClick={handleCreateCustomer} className="flex-1 h-12">
+                                  Criar Cliente
+                                </Button>
+                                <Button variant="outline" onClick={() => setShowCustomerDialog(false)} className="h-12">
+                                  Cancelar
+                                </Button>
+                              </div>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
+                    </div>
+
+                    {/* Quick Actions */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <Dialog open={showDiscountDialog} onOpenChange={setShowDiscountDialog}>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" className="h-12">
+                            <Percent className="mr-2 h-4 w-4" />
+                            Desconto
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>
+                              {selectedItemForDiscount ? 'Desconto no Item' : 'Desconto Total'}
+                            </DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <div className="space-y-2">
+                              <Label>Tipo de Desconto</Label>
+                              <Select
+                                value={discountForm.type}
+                                onValueChange={(value: 'percentage' | 'fixed') => 
+                                  setDiscountForm({ ...discountForm, type: value })
+                                }
+                              >
+                                <SelectTrigger className="h-12">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="fixed">Valor Fixo (R$)</SelectItem>
+                                  <SelectItem value="percentage">Percentual (%)</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Valor</Label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={discountForm.amount}
+                                onChange={(e) => setDiscountForm({ ...discountForm, amount: Number(e.target.value) })}
+                                className="h-12"
+                              />
+                            </div>
+                            <div className="flex space-x-2">
+                              <Button onClick={handleApplyDiscount} className="flex-1 h-12">
+                                Aplicar
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                onClick={() => {
+                                  setShowDiscountDialog(false);
+                                  setSelectedItemForDiscount(null);
+                                }}
+                                className="h-12"
+                              >
+                                Cancelar
+                              </Button>
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+
+                      <Dialog open={showAdditionDialog} onOpenChange={setShowAdditionDialog}>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" className="h-12">
+                            <Plus className="mr-2 h-4 w-4" />
+                            Acréscimo
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Acréscimo Total</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <div className="space-y-2">
+                              <Label>Tipo de Acréscimo</Label>
+                              <Select
+                                value={additionForm.type}
+                                onValueChange={(value: 'percentage' | 'fixed') => 
+                                  setAdditionForm({ ...additionForm, type: value })
+                                }
+                              >
+                                <SelectTrigger className="h-12">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="fixed">Valor Fixo (R$)</SelectItem>
+                                  <SelectItem value="percentage">Percentual (%)</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Valor</Label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={additionForm.amount}
+                                onChange={(e) => setAdditionForm({ ...additionForm, amount: Number(e.target.value) })}
+                                className="h-12"
+                              />
+                            </div>
+                            <div className="flex space-x-2">
+                              <Button onClick={handleApplyAddition} className="flex-1 h-12">
+                                Aplicar
+                              </Button>
+                              <Button variant="outline" onClick={() => setShowAdditionDialog(false)} className="h-12">
+                                Cancelar
+                              </Button>
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+
+                    {/* Payment Methods */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Pagamentos</Label>
+                      
+                      {paymentMethods.map((payment, index) => (
+                        <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm">
+                          <div>
+                            <span className="font-medium">
+                              {getPaymentMethodLabel(payment.type)}
+                            </span>
+                            <p className="text-xs text-gray-500">
+                              {formatCurrency(payment.amount)}
+                              {payment.fee && payment.fee > 0 && (
+                                <span className="text-orange-600">
+                                  {' '}(Taxa: {formatCurrency(payment.fee)})
+                                </span>
+                              )}
+                              {payment.chargeAmount && payment.chargeAmount !== payment.amount && (
+                                <span className="text-purple-600">
+                                  {' '}→ Cobrar: {formatCurrency(payment.chargeAmount)}
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => removePaymentMethod(index)}
+                            className="h-8 px-2"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+
+                      <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" className="w-full h-12">
+                            <Plus className="mr-2 h-4 w-4" />
+                            Adicionar Pagamento
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Adicionar Forma de Pagamento</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <div className="space-y-2">
+                              <Label>Método de Pagamento</Label>
+                              <Select
+                                value={paymentForm.type}
+                                onValueChange={(value: any) => setPaymentForm({ ...paymentForm, type: value })}
+                              >
+                                <SelectTrigger className="h-12">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {getEnabledPaymentMethods().map((method) => (
+                                    <SelectItem key={method.value} value={method.value}>
+                                      {method.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            
+                            <div className="space-y-2">
+                              <Label>Valor do Pagamento</Label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={paymentForm.amount}
+                                onChange={(e) => setPaymentForm({ ...paymentForm, receivedAmount: Number(e.target.value), amount: Number(e.target.value) })}
+                                className="h-12"
+                              />
+                              <p className="text-xs text-gray-500">
+                                Restante: {formatCurrency(getTotal() - paymentMethods.reduce((sum, p) => sum + p.amount, 0))}
+                              </p>
+                            </div>
+                            
+                            {paymentForm.type === 'dinheiro' && change > 0 && (
+                              <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                                <div className="text-center">
+                                  <p className="text-sm text-green-700 font-medium">TROCO</p>
+                                  <p className="text-2xl font-bold text-green-800">
+                                    {formatCurrency(change)}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {paymentForm.amount > 0 && paymentSettings && (
+                              <div className="p-3 bg-blue-50 rounded-lg">
+                                {(() => {
+                                  const { fee, chargeAmount } = calculatePaymentFee(paymentForm.type, paymentForm.amount);
+                                  if (fee > 0 && paymentSettings.feeResponsibility === 'customer') {
+                                    return (
+                                      <div className="text-sm">
+                                        <p className="font-medium text-blue-900">Cobrança com Taxa:</p>
+                                        <p className="text-blue-700">
+                                          Cobrar <strong>{formatCurrency(chargeAmount)}</strong> para receber <strong>{formatCurrency(paymentForm.amount)}</strong>
+                                        </p>
+                                        <p className="text-xs text-blue-600">
+                                          Taxa: {formatCurrency(fee)}
+                                        </p>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                })()}
+                              </div>
+                            )}
+                            
+                            <div className="flex space-x-2">
+                              <Button onClick={handleAddPayment} className="flex-1 h-12">
+                                Adicionar
+                              </Button>
+                              <Button variant="outline" onClick={() => setShowPaymentDialog(false)} className="h-12">
+                                Cancelar
+                              </Button>
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                    
+                    <Button
+                      onClick={completeSale}
+                      disabled={loading || cart.length === 0 || paymentMethods.reduce((sum, p) => sum + p.amount, 0) < getTotal()}
+                      className="w-full bg-green-600 hover:bg-green-700 h-14 text-lg font-semibold"
+                    >
+                      <CreditCard className="mr-2 h-5 w-5" />
+                      {loading ? 'Processando...' : 'Finalizar Venda'}
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
+          </SheetContent>
+        </Sheet>
+
+        {/* Quick Actions Row */}
+        {cart.length > 0 && (
+          <div className="grid grid-cols-3 gap-2">
+            <Dialog open={showCustomerDialog} onOpenChange={setShowCustomerDialog}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="h-12">
+                  <User className="mr-1 h-4 w-4" />
+                  Cliente
+                </Button>
+              </DialogTrigger>
+            </Dialog>
+            
+            <Dialog open={showDiscountDialog} onOpenChange={setShowDiscountDialog}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="h-12">
+                  <Percent className="mr-1 h-4 w-4" />
+                  Desconto
+                </Button>
+              </DialogTrigger>
+            </Dialog>
+            
+            <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="h-12">
+                  <CreditCard className="mr-1 h-4 w-4" />
+                  Pagamento
+                </Button>
+              </DialogTrigger>
+            </Dialog>
+          </div>
+        )}
       </div>
     </div>
   );

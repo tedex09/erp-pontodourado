@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useThemeStore } from '@/store/useThemeStore';
+import { useEffect, useState } from 'react';
 import {
   Home,
   ShoppingCart,
@@ -141,15 +142,29 @@ export function MobileBottomNav() {
 
 export function MobileHeader() {
   const { data: session } = useSession();
+  const { companyName } = useThemeStore();
+  const [logo, setLogo] = useState<string>('');
+  
+  useEffect(() => {
+    const savedLogo = localStorage.getItem('company-logo');
+    if (savedLogo) {
+      setLogo(savedLogo);
+    }
+  }, []);
   
   return (
     <div className="md:hidden sticky top-0 z-40 bg-white border-b border-gray-200 px-4 py-3 safe-area-top">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
-          <Package className="h-6 w-6 text-indigo-600" />
-          <span className="text-lg font-semibold text-gray-900">
-            Ponto Dourado
-          </span>
+          {logo ? (
+            <img src={logo} alt={companyName} className="h-6 w-auto max-w-32" />
+          ) : (
+            <>
+              <span className="text-lg font-semibold text-gray-900">
+                {companyName}
+              </span>
+            </>
+          )}
         </div>
         
         <div className="flex items-center space-x-2">

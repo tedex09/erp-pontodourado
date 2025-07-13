@@ -102,6 +102,7 @@ export default function SettingsPage() {
   // Theme form state
   const [themeForm, setThemeForm] = useState({
     companyName: companyName,
+    logo: '',
     primaryColor: '#6366f1',
     backgroundColor: '#ffffff',
     textColor: '#111827',
@@ -290,6 +291,11 @@ export default function SettingsPage() {
 
   const handleSaveTheme = () => {
     setCompanyName(themeForm.companyName);
+    
+    // Save logo if provided
+    if (themeForm.logo) {
+      localStorage.setItem('company-logo', themeForm.logo);
+    }
     
     // Convert hex colors to HSL for CSS variables
     const hexToHsl = (hex: string) => {
@@ -584,6 +590,38 @@ export default function SettingsPage() {
                 </p>
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="logo">Logomarca</Label>
+                <Input
+                  id="logo"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (e) => {
+                        setThemeForm({ ...themeForm, logo: e.target?.result as string });
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                  className="h-12 md:h-10"
+                />
+                {themeForm.logo && (
+                  <div className="mt-2">
+                    <img
+                      src={themeForm.logo}
+                      alt="Logo preview"
+                      className="h-16 w-auto object-contain border rounded"
+                    />
+                  </div>
+                )}
+                <p className="text-sm text-gray-500">
+                  Quando uma logo for definida, ela substituirá o nome da loja no cabeçalho
+                </p>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="primaryColor">Cor Principal</Label>
@@ -653,7 +691,13 @@ export default function SettingsPage() {
                     color: themeForm.textColor
                   }}
                 >
-                  <h3 className="font-semibold mb-2">{themeForm.companyName}</h3>
+                  <div className="flex items-center space-x-2 mb-2">
+                    {themeForm.logo ? (
+                      <img src={themeForm.logo} alt="Logo" className="h-8 w-auto" />
+                    ) : (
+                      <h3 className="font-semibold">{themeForm.companyName}</h3>
+                    )}
+                  </div>
                   <button 
                     className="px-4 py-2 rounded text-white font-medium"
                     style={{ backgroundColor: themeForm.primaryColor }}

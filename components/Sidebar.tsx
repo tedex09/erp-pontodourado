@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useThemeStore } from '@/store/useThemeStore';
+import { useEffect, useState } from 'react';
 import {
   Home,
   ShoppingCart,
@@ -37,8 +38,16 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
   const { companyName } = useThemeStore();
+  const [logo, setLogo] = useState<string>('');
   
   const userRole = session?.user?.role || 'vendedor';
+  
+  useEffect(() => {
+    const savedLogo = localStorage.getItem('company-logo');
+    if (savedLogo) {
+      setLogo(savedLogo);
+    }
+  }, []);
   
   const filteredNavigation = navigation.filter(item => 
     item.roles.includes(userRole)
@@ -49,10 +58,16 @@ export default function Sidebar() {
       <div className="flex flex-col w-64">
         <div className="flex flex-col flex-grow pt-5 pb-4 overflow-y-auto bg-white border-r border-gray-200">
           <div className="flex items-center flex-shrink-0 px-4">
-            <Package className="h-8 w-8 text-indigo-600" />
-            <span className="ml-2 text-lg font-semibold text-gray-900">
-              {companyName}
-            </span>
+            {logo ? (
+              <img src={logo} alt={companyName} className="h-8 w-auto max-w-full" />
+            ) : (
+              <>
+                <Package className="h-8 w-8 text-indigo-600" />
+                <span className="ml-2 text-lg font-semibold text-gray-900">
+                  {companyName}
+                </span>
+              </>
+            )}
           </div>
           
           <div className="mt-5 flex-grow flex flex-col">
