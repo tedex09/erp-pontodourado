@@ -1,11 +1,11 @@
 {
-  "name": "Loja de Bijuterias",
-  "short_name": "Bijuterias",
-  "description": "Sistema completo para gestão de bijuterias e acessórios",
+  "name": "Ponto Dourado",
+  "short_name": "Ponto Dourado",
+  "description": "",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#6366f1",
+  "background_color": "#194457",
+  "theme_color": "#194457",
   "icons": [
     {
       "src": "/icon-192x192.png",

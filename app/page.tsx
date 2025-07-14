@@ -380,7 +380,7 @@ export default function DashboardPage() {
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Link href="/pdv">
-              <Button className="w-full h-20 flex flex-col space-y-2 bg-indigo-600 hover:bg-indigo-700">
+              <Button className="w-full h-20 flex flex-col space-y-2 bg-primary hover:bg-indigo-700">
                 <ShoppingCart className="h-6 w-6" />
                 <span className="text-sm">Abrir PDV</span>
               </Button>

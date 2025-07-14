@@ -218,7 +218,7 @@ export default function CategoriesPage() {
                       type="button"
                       onClick={() => setFormData({ ...formData, icon })}
                       className={`p-2 text-2xl border rounded-lg hover:bg-gray-50 ${
-                        formData.icon === icon ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200'
+                        formData.icon === icon ? 'border-indigo-500 bg-primary' : 'border-gray-200'
                       }`}
                     >
                       {icon}

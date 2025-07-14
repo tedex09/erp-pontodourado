@@ -120,7 +120,7 @@ export default function Layout({ children }: LayoutProps) {
             
             <Button 
               onClick={() => router.push('/ponto')} 
-              className="w-full bg-indigo-600 hover:bg-indigo-700 h-12 touch-button"
+              className="w-full bg-primary hover:bg-indigo-700 h-12 touch-button"
             >
               <Clock className="mr-2 h-4 w-4" />
               Ir para Controle de Ponto

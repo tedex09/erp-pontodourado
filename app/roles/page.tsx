@@ -290,7 +290,7 @@ export default function RolesPage() {
                         .map(([key, _]) => (
                           <span
                             key={key}
-                            className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-indigo-100 text-indigo-800"
+                            className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-primary text-indigo-800"
                           >
                             {permissionLabels[key as keyof typeof permissionLabels]}
                           </span>

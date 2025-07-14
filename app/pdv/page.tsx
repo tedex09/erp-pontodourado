@@ -1114,7 +1114,7 @@ export default function PDVPage() {
         <Sheet open={showCartSheet} onOpenChange={setShowCartSheet}>
           <SheetTrigger asChild>
             <Button 
-              className="w-full h-14 bg-indigo-600 hover:bg-indigo-700 text-lg font-semibold"
+              className="w-full h-14 bg-primary hover:bg-indigo-700 text-lg font-semibold"
               disabled={cart.length === 0}
             >
               <ShoppingCart className="mr-2 h-5 w-5" />

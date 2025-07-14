@@ -604,7 +604,7 @@ export default function CampaignsPage() {
                 {referrals.map((referral) => (
                   <div key={referral._id} className="flex items-center justify-between p-4 border rounded-lg">
                     <div className="flex items-center space-x-4">
-                      <div className="flex items-center justify-center w-10 h-10 bg-indigo-100 rounded-full">
+                      <div className="flex items-center justify-center w-10 h-10 bg-primary rounded-full">
                         <UserPlus className="h-5 w-5 text-indigo-600" />
                       </div>
                       <div>
