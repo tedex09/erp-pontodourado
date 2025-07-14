@@ -83,6 +83,27 @@ export async function POST(req: NextRequest) {
     
     await sale.save();
     
+    // Register cash movement for sale
+    const currentCash = await CashRegister.findOne({
+      userId: session.user.id,
+      status: 'open',
+    });
+    
+    if (currentCash) {
+      const { CashMovement } = await import('@/lib/models');
+      const cashMovement = new CashMovement({
+        cashRegisterId: currentCash._id,
+        type: 'venda',
+        category: 'venda',
+        amount: data.finalAmount || data.total,
+        description: `Venda #${sale._id.toString().slice(-6)}`,
+        saleId: sale._id,
+        userId: session.user.id,
+        userName: session.user.name,
+      });
+      await cashMovement.save();
+    }
+    
     // Update product stock
     for (const item of data.items) {
       await Product.findByIdAndUpdate(

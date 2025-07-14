@@ -20,6 +20,7 @@ export interface IUser {
     employees: boolean;
     categories: boolean;
   };
+  dailyRate?: number;
   active: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -68,6 +69,10 @@ const userSchema = new mongoose.Schema<IUser>(
     active: {
       type: Boolean,
       default: true,
+    },
+    dailyRate: {
+      type: Number,
+      min: 0,
     },
   },
   {

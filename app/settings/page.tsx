@@ -362,10 +362,12 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-6 h-auto">
           <TabsTrigger value="general" className="text-xs md:text-sm p-2 md:p-3">Geral</TabsTrigger>
           <TabsTrigger value="theme" className="text-xs md:text-sm p-2 md:p-3">Tema</TabsTrigger>
           <TabsTrigger value="payments" className="text-xs md:text-sm p-2 md:p-3">Pagamentos</TabsTrigger>
+          <TabsTrigger value="commissions" className="text-xs md:text-sm p-2 md:p-3">Comissões</TabsTrigger>
+          <TabsTrigger value="analytics" className="text-xs md:text-sm p-2 md:p-3">Análises</TabsTrigger>
           <TabsTrigger value="location" className="text-xs md:text-sm p-2 md:p-3">Localização</TabsTrigger>
         </TabsList>
 
@@ -937,6 +939,91 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="commissions" className="space-y-6">
+          <CommissionSettingsTab />
+        </TabsContent>
+
+        <TabsContent value="analytics" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Configurações de Análise Inteligente</CardTitle>
+              <CardDescription>
+                Configure os parâmetros para análises automáticas e relatórios
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-base font-medium">Sistema de Análises</Label>
+                    <p className="text-sm text-gray-500">Ativar análises automáticas e insights</p>
+                  </div>
+                  <Switch />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <h3 className="font-semibold">Limites de Alerta</h3>
+                    
+                    <div className="space-y-2">
+                      <Label>Dias sem venda (baixa rotatividade)</Label>
+                      <Input type="number" defaultValue="30" />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>Dias sem compra (cliente inativo)</Label>
+                      <Input type="number" defaultValue="60" />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>Limite baixo desempenho (%)</Label>
+                      <Input type="number" defaultValue="20" />
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h3 className="font-semibold">Classificação de Clientes</h3>
+                    
+                    <div className="space-y-2">
+                      <Label>Valor mínimo cliente VIP (R$)</Label>
+                      <Input type="number" defaultValue="500" />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>Compras para cliente frequente</Label>
+                      <Input type="number" defaultValue="5" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="font-semibold">Relatórios Automáticos</h3>
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Relatórios diários</Label>
+                      <p className="text-sm text-gray-500">Enviar resumo diário por WhatsApp/Email</p>
+                    </div>
+                    <Switch />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Alertas críticos</Label>
+                      <p className="text-sm text-gray-500">Notificações imediatas para problemas urgentes</p>
+                    </div>
+                    <Switch />
+                  </div>
+                </div>
+
+                <Button className="w-full">
+                  Salvar Configurações de Análise
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="location" className="space-y-6">
           <div className="flex justify-end">
             <Button 
@@ -1083,5 +1170,263 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function CommissionSettingsTab() {
+  const [commissionSettings, setCommissionSettings] = useState<any>(null);
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetchCommissionSettings();
+    fetchEmployees();
+  }, []);
+
+  const fetchCommissionSettings = async () => {
+    try {
+      const response = await fetch('/api/commission-settings');
+      if (response.ok) {
+        const data = await response.json();
+        setCommissionSettings(data);
+      }
+    } catch (error) {
+      console.error('Error fetching commission settings:', error);
+    }
+  };
+
+  const fetchEmployees = async () => {
+    try {
+      const response = await fetch('/api/employees');
+      if (response.ok) {
+        const data = await response.json();
+        setEmployees(data.filter((emp: any) => emp.role !== 'admin'));
+      }
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+    }
+  };
+
+  const handleSaveCommissionSettings = async () => {
+    setSaving(true);
+    try {
+      const response = await fetch('/api/commission-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(commissionSettings),
+      });
+      
+      if (response.ok) {
+        showToast.success('Configurações de comissão salvas');
+      } else {
+        const error = await response.json();
+        showToast.error(error.error || 'Erro ao salvar configurações');
+      }
+    } catch (error) {
+      console.error('Error saving commission settings:', error);
+      showToast.error('Erro ao salvar configurações');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const updateEmployeeSetting = (userId: string, field: string, value: any) => {
+    setCommissionSettings((prev: any) => {
+      const employeeSettings = [...(prev.employeeSettings || [])];
+      const existingIndex = employeeSettings.findIndex(s => s.userId === userId);
+      
+      if (existingIndex >= 0) {
+        employeeSettings[existingIndex] = {
+          ...employeeSettings[existingIndex],
+          [field]: value,
+        };
+      } else {
+        const employee = employees.find(e => e._id === userId);
+        employeeSettings.push({
+          userId,
+          userName: employee?.name || '',
+          percentage: prev.defaultPercentage || 5,
+          active: true,
+          [field]: value,
+        });
+      }
+      
+      return {
+        ...prev,
+        employeeSettings,
+      };
+    });
+  };
+
+  const getEmployeeSetting = (userId: string, field: string) => {
+    const setting = commissionSettings?.employeeSettings?.find((s: any) => s.userId === userId);
+    return setting?.[field] ?? (field === 'percentage' ? commissionSettings?.defaultPercentage : undefined);
+  };
+
+  if (!commissionSettings) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="flex justify-end">
+        <Button 
+          onClick={handleSaveCommissionSettings} 
+          disabled={saving} 
+          className="bg-indigo-600 hover:bg-indigo-700 h-12 md:h-10 touch-button"
+        >
+          <Save className="mr-2 h-4 w-4" />
+          {saving ? 'Salvando...' : 'Salvar Configurações'}
+        </Button>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <DollarSign className="mr-2 h-5 w-5" />
+            Configurações de Comissão
+          </CardTitle>
+          <CardDescription>
+            Configure comissões por vendas para funcionários
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label className="text-base">Ativar Sistema de Comissões</Label>
+              <p className="text-sm text-gray-500">
+                Habilita o cálculo automático de comissões por vendas
+              </p>
+            </div>
+            <Switch
+              checked={commissionSettings.enabled}
+              onCheckedChange={(checked) => setCommissionSettings({ ...commissionSettings, enabled: checked })}
+            />
+          </div>
+
+          {commissionSettings.enabled && (
+            <>
+              <Separator />
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Percentual Padrão (%)</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="100"
+                    value={commissionSettings.defaultPercentage}
+                    onChange={(e) => setCommissionSettings({ 
+                      ...commissionSettings, 
+                      defaultPercentage: Number(e.target.value) 
+                    })}
+                    className="h-12 md:h-10"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Mínimo Vendas/Dia</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={commissionSettings.minimumDailySales || ''}
+                    onChange={(e) => setCommissionSettings({ 
+                      ...commissionSettings, 
+                      minimumDailySales: e.target.value ? Number(e.target.value) : undefined 
+                    })}
+                    placeholder="Opcional"
+                    className="h-12 md:h-10"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Mínimo Vendas/Mês</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={commissionSettings.minimumMonthlySales || ''}
+                    onChange={(e) => setCommissionSettings({ 
+                      ...commissionSettings, 
+                      minimumMonthlySales: e.target.value ? Number(e.target.value) : undefined 
+                    })}
+                    placeholder="Opcional"
+                    className="h-12 md:h-10"
+                  />
+                </div>
+              </div>
+
+              <Separator />
+              
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Configurações por Funcionário</h3>
+                <div className="space-y-4">
+                  {employees.map((employee) => (
+                    <Card key={employee._id} className="p-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <h4 className="font-medium">{employee.name}</h4>
+                          <p className="text-sm text-gray-500">{employee.email}</p>
+                        </div>
+                        <Switch
+                          checked={getEmployeeSetting(employee._id, 'active') ?? false}
+                          onCheckedChange={(checked) => updateEmployeeSetting(employee._id, 'active', checked)}
+                        />
+                      </div>
+                      
+                      {getEmployeeSetting(employee._id, 'active') && (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <Label>Percentual (%)</Label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              min="0"
+                              max="100"
+                              value={getEmployeeSetting(employee._id, 'percentage') || commissionSettings.defaultPercentage}
+                              onChange={(e) => updateEmployeeSetting(employee._id, 'percentage', Number(e.target.value))}
+                              className="h-12 md:h-10"
+                            />
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label>Mín. Vendas/Dia</Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              value={getEmployeeSetting(employee._id, 'minimumDailySales') || ''}
+                              onChange={(e) => updateEmployeeSetting(employee._id, 'minimumDailySales', e.target.value ? Number(e.target.value) : undefined)}
+                              placeholder="Usar padrão"
+                              className="h-12 md:h-10"
+                            />
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label>Mín. Vendas/Mês</Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              value={getEmployeeSetting(employee._id, 'minimumMonthlySales') || ''}
+                              onChange={(e) => updateEmployeeSetting(employee._id, 'minimumMonthlySales', e.target.value ? Number(e.target.value) : undefined)}
+                              placeholder="Usar padrão"
+                              className="h-12 md:h-10"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </>
   );
 }

@@ -16,6 +16,7 @@ import {
   Store,
   DollarSign,
   Clock,
+  Brain,
 } from 'lucide-react';
 
 const navigation = [
@@ -26,11 +27,14 @@ const navigation = [
   { name: 'Categorias', href: '/categories', icon: Store, roles: ['admin'] },
   { name: 'Estoque', href: '/inventory', icon: Store, roles: ['admin', 'estoque'] },
   { name: 'Fiados', href: '/fiados', icon: DollarSign, roles: ['admin', 'vendedor', 'caixa'] },
+  { name: 'Caixa', href: '/cash-management', icon: DollarSign, roles: ['admin', 'vendedor', 'caixa'] },
   { name: 'Ponto', href: '/ponto', icon: Clock, roles: ['admin', 'vendedor', 'caixa', 'estoque'] },
   { name: 'Campanhas', href: '/campaigns', icon: Users, roles: ['admin', 'vendedor'] },
   { name: 'Funcionários', href: '/employees', icon: UserCheck, roles: ['admin'] },
+  { name: 'Folha Pagamento', href: '/payroll', icon: DollarSign, roles: ['admin'] },
   { name: 'Funções', href: '/roles', icon: UserCheck, roles: ['admin'] },
   { name: 'Relatórios', href: '/reports', icon: BarChart3, roles: ['admin'] },
+  { name: 'Análise Inteligente', href: '/analytics', icon: Brain, roles: ['admin'] },
   { name: 'Configurações', href: '/settings', icon: Settings, roles: ['admin'] },
 ];
 

@@ -13,6 +13,11 @@ import Referral from './Referral';
 import Fiado from './Fiado';
 import TimeTracking from './TimeTracking';
 import CashRegister from './CashRegister';
+import CashMovement from './CashMovement';
+import CommissionSettings from './CommissionSettings';
+import PayrollEntry from './PayrollEntry';
+import Insight from './Insight';
+import AnalyticsSettings from './AnalyticsSettings';
 
 // Export all models to ensure they are registered
 export {
@@ -30,6 +35,11 @@ export {
   Fiado,
   TimeTracking,
   CashRegister,
+  CashMovement,
+  CommissionSettings,
+  PayrollEntry,
+  Insight,
+  AnalyticsSettings,
 };
 
 // Function to ensure all models are registered
@@ -51,5 +61,10 @@ export function registerModels() {
     Fiado,
     TimeTracking,
     CashRegister,
+    CashMovement,
+    CommissionSettings,
+    PayrollEntry,
+    Insight,
+    AnalyticsSettings,
   };
 }

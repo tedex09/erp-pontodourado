@@ -33,6 +33,7 @@ export default function EmployeesPage() {
     email: '',
     password: '',
     role: 'vendedor' as 'admin' | 'vendedor' | 'caixa' | 'estoque',
+    dailyRate: 0,
     active: true,
   });
 
@@ -96,6 +97,7 @@ export default function EmployeesPage() {
       email: '',
       password: '',
       role: 'vendedor',
+      dailyRate: 0,
       active: true,
     });
   };
@@ -107,6 +109,7 @@ export default function EmployeesPage() {
       email: employee.email,
       password: '',
       role: employee.role,
+      dailyRate: (employee as any).dailyRate || 0,
       active: employee.active,
     });
     setShowDialog(true);
@@ -144,6 +147,13 @@ export default function EmployeesPage() {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-BR');
+  };
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(value);
   };
 
   return (
@@ -215,6 +225,19 @@ export default function EmployeesPage() {
                     <SelectItem value="estoque">Estoque</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="dailyRate">Valor da Diária (R$)</Label>
+                <Input
+                  id="dailyRate"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.dailyRate}
+                  onChange={(e) => setFormData({ ...formData, dailyRate: Number(e.target.value) })}
+                  placeholder="0.00"
+                />
               </div>
               
               <div className="flex items-center space-x-2">
@@ -289,6 +312,13 @@ export default function EmployeesPage() {
                       <Calendar className="h-4 w-4" />
                       <span>Criado em: {formatDate(employee.createdAt)}</span>
                     </div>
+                    
+                    {(employee as any).dailyRate && (
+                      <div className="flex items-center space-x-2 text-sm text-gray-600">
+                        <DollarSign className="h-4 w-4" />
+                        <span>Diária: {formatCurrency((employee as any).dailyRate)}</span>
+                      </div>
+                    )}
                   </div>
                   
                   <Button
