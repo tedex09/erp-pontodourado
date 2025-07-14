@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
   ShoppingCart, 
@@ -69,7 +70,8 @@ export default function DashboardPage() {
   const { data: session } = useSession();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
-  
+  const router = useRouter();
+
   // Redirect admins to the full dashboard
   useEffect(() => {
     if (session?.user?.role === 'admin') {

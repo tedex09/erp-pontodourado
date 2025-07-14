@@ -54,23 +54,22 @@ export default function Sidebar() {
   );
   
   return (
-    <div className="hidden md:flex md:flex-shrink-0">
+    <div className="hidden md:flex md:flex-shrink-0 h-screen">
       <div className="flex flex-col w-64">
-        <div className="flex flex-col flex-grow pt-5 pb-4 overflow-y-auto bg-white border-r border-gray-200">
+        <div className="flex flex-col flex-grow pt-5 pb-4 overflow-y-auto bg-primary border-r border-primary">
           <div className="flex items-center flex-shrink-0 px-4">
             {logo ? (
               <img src={logo} alt={companyName} className="h-8 w-auto max-w-full" />
             ) : (
               <>
-                <Package className="h-8 w-8 text-indigo-600" />
-                <span className="ml-2 text-lg font-semibold text-gray-900">
+                <span className="ml-2 text-lg font-semibold text-white">
                   {companyName}
                 </span>
               </>
             )}
           </div>
           
-          <div className="mt-5 flex-grow flex flex-col">
+          <div className="mt-12 flex-grow flex flex-col">
             <nav className="flex-1 px-2 space-y-1">
               {filteredNavigation.map((item) => {
                 const isActive = pathname === item.href;
@@ -80,13 +79,13 @@ export default function Sidebar() {
                     href={item.href}
                     className={`${
                       isActive
-                        ? 'bg-indigo-50 border-indigo-500 text-indigo-700'
-                        : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                    } group flex items-center pl-3 pr-4 py-2 border-l-4 text-sm font-medium transition-colors duration-150`}
+                        ? 'bg-white/20 text-yellow-500 !font-bold'
+                        : 'border-transparent text-white/30 hover:text-yellow-500 hover:bg-white/5'
+                    } group flex items-center pl-3 pr-4 py-2 border-l-4 text-sm rounded-sm font-light transition-colors duration-150`}
                   >
                     <item.icon
                       className={`${
-                        isActive ? 'text-indigo-500' : 'text-gray-400 group-hover:text-gray-500'
+                        isActive ? 'text-yellow-500' : 'group-hover:text-yellow-500'
                       } mr-3 h-5 w-5`}
                     />
                     {item.name}

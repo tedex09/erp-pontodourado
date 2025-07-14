@@ -169,7 +169,7 @@ export default function Layout({ children }: LayoutProps) {
           {/* Mobile Header */}
           <MobileHeader />
           
-          <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 pb-16 md:pb-0">
+          <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-30 pb-16 md:pb-0">
             <div className="container mx-auto px-4 py-4 md:py-8">
               {children}
             </div>
