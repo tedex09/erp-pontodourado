@@ -67,7 +67,25 @@ const analyticsSettingsSchema = new mongoose.Schema<IAnalyticsSettings>(
   },
   {
     timestamps: true,
+    // Ensure proper handling of nested object updates
+    minimize: false,
+    strict: true
   }
 );
+
+// Add pre-save middleware to ensure nested objects are properly saved
+analyticsSettingsSchema.pre('save', function(next) {
+  // Mark nested paths as modified to ensure they are saved
+  if (this.isModified('autoReports')) {
+    this.markModified('autoReports');
+  }
+  if (this.isModified('thresholds')) {
+    this.markModified('thresholds');
+  }
+  if (this.isModified('notifications')) {
+    this.markModified('notifications');
+  }
+  next();
+});
 
 export default mongoose.models.AnalyticsSettings || mongoose.model<IAnalyticsSettings>('AnalyticsSettings', analyticsSettingsSchema);

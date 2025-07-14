@@ -86,6 +86,7 @@ export default function AnalyticsPage() {
   const [selectedInsight, setSelectedInsight] = useState<Insight | null>(null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [settingsLoading, setSettingsLoading] = useState(false);
 
   useEffect(() => {
     fetchDashboardData();
@@ -124,6 +125,14 @@ export default function AnalyticsPage() {
   const generateInsights = async () => {
     setLoading(true);
     try {
+      // First ensure settings are properly loaded
+      setSettingsLoading(true);
+      const settingsResponse = await fetch('/api/analytics/settings');
+      if (!settingsResponse.ok) {
+        throw new Error('Failed to load analytics settings');
+      }
+      setSettingsLoading(false);
+      
       const response = await fetch('/api/analytics/insights', {
         method: 'POST',
       });
@@ -138,6 +147,7 @@ export default function AnalyticsPage() {
     } catch (error) {
       console.error('Error generating insights:', error);
       showToast.error('Erro ao processar análises');
+      setSettingsLoading(false);
     } finally {
       setLoading(false);
     }
@@ -244,8 +254,9 @@ export default function AnalyticsPage() {
             <Brain className="mr-3 h-8 w-8 text-indigo-600" />
             Análise Inteligente
           </h1>
-          <p className="text-gray-600 mt-1">
-            Insights automáticos para otimizar sua loja
+          <p>
+            <RefreshCw className={`mr-2 h-4 w-4 ${loading || settingsLoading ? 'animate-spin' : ''}`} />
+            {loading ? 'Analisando...' : settingsLoading ? 'Carregando configurações...' : 'Atualizar Análises'}
           </p>
         </div>
         <Button onClick={generateInsights} disabled={loading} className="bg-indigo-600 hover:bg-indigo-700">

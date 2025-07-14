@@ -49,7 +49,8 @@ export class AnalyticsService {
   static async generateAllInsights(): Promise<void> {
     await connectMongo();
     
-    const settings = await AnalyticsSettings.findOne();
+    // Always fetch the latest settings from database
+    const settings = await AnalyticsSettings.findOne().lean();
     if (!settings || !settings.enabled) return;
 
     // Limpar insights antigos (mais de 30 dias)
@@ -67,11 +68,14 @@ export class AnalyticsService {
   }
 
   static async generateProductInsights(settings: any): Promise<void> {
+    // Use the actual settings values from database
+    const lowRotationThreshold = settings.thresholds?.lowRotationDays || 30;
+    
     const products = await this.analyzeProducts();
     
     for (const product of products) {
       // Produto com baixa rotatividade
-      if (product.daysSinceLastSale > settings.thresholds.lowRotationDays) {
+      if (product.daysSinceLastSale > lowRotationThreshold) {
         await this.createInsight({
           type: 'product',
           category: 'alert',
@@ -112,11 +116,14 @@ export class AnalyticsService {
   }
 
   static async generateCustomerInsights(settings: any): Promise<void> {
+    // Use the actual settings values from database
+    const inactiveCustomerThreshold = settings.thresholds?.inactiveCustomerDays || 60;
+    
     const customers = await this.analyzeCustomers();
     
     for (const customer of customers) {
       // Cliente inativo
-      if (customer.daysSinceLastPurchase > settings.thresholds.inactiveCustomerDays) {
+      if (customer.daysSinceLastPurchase > inactiveCustomerThreshold) {
         await this.createInsight({
           type: 'customer',
           category: 'alert',
@@ -158,12 +165,15 @@ export class AnalyticsService {
   }
 
   static async generateEmployeeInsights(settings: any): Promise<void> {
+    // Use the actual settings values from database
+    const lowPerformanceThreshold = settings.thresholds?.lowPerformanceThreshold || 20;
+    
     const employees = await this.analyzeEmployees();
     const averagePerformance = employees.reduce((sum, emp) => sum + emp.performanceScore, 0) / employees.length;
     
     for (const employee of employees) {
       // Funcionário com baixo desempenho
-      if (employee.performanceScore < averagePerformance * (1 - settings.thresholds.lowPerformanceThreshold / 100)) {
+      if (employee.performanceScore < averagePerformance * (1 - lowPerformanceThreshold / 100)) {
         await this.createInsight({
           type: 'employee',
           category: 'alert',
@@ -251,11 +261,14 @@ export class AnalyticsService {
   }
 
   static async generateInventoryInsights(settings: any): Promise<void> {
+    // Use the actual settings values from database
+    const lowStockThreshold = settings.thresholds?.lowStockThreshold || 5;
+    
     const products = await Product.find({ active: true });
     
     for (const product of products) {
       // Estoque baixo
-      if (product.stock <= product.minStock) {
+      if (product.stock <= Math.max(product.minStock, lowStockThreshold)) {
         await this.createInsight({
           type: 'inventory',
           category: 'alert',

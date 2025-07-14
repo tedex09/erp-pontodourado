@@ -48,7 +48,11 @@ export async function PUT(req: NextRequest) {
         updatedBy: session.user.id,
       });
     } else {
-      Object.assign(settings, data);
+      // Merge configurations properly to ensure all nested objects are updated
+      settings.enabled = data.enabled ?? settings.enabled;
+      settings.autoReports = { ...settings.autoReports, ...data.autoReports };
+      settings.thresholds = { ...settings.thresholds, ...data.thresholds };
+      settings.notifications = { ...settings.notifications, ...data.notifications };
       settings.updatedBy = session.user.id;
     }
     

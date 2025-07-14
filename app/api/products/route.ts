@@ -28,10 +28,18 @@ export async function GET(req: NextRequest) {
     }
     
     if (category) {
-      query.$or = [
-        { category: category },
-        { categoryId: category }
-      ];
+      // First try to find by categoryId (ObjectId)
+      const categoryDoc = await Category.findById(category);
+      if (categoryDoc) {
+        // Filter by both categoryId and category name for backward compatibility
+        query.$or = [
+          { categoryId: category },
+          { category: categoryDoc.name }
+        ];
+      } else {
+        // If not found by ID, try by category name
+        query.category = category;
+      }
     }
     
     if (lowStock === 'true') {
