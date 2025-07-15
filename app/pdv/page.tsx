@@ -10,10 +10,8 @@ import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { 
-  Search, 
   Plus, 
   Minus, 
   Trash2, 
@@ -22,9 +20,6 @@ import {
   CreditCard, 
   UserPlus,
   Percent,
-  DollarSign,
-  Calculator,
-  Filter,
   Package,
   ArrowLeft
 } from 'lucide-react';
@@ -32,6 +27,7 @@ import { showToast } from '@/components/ui/toast';
 import { debounce } from 'lodash';
 import { filterByTextIgnoreAccents } from '@/lib/utils/textUtils';
 import { useRouter } from 'next/navigation';
+import { NumericFormat } from 'react-number-format';
 
 interface Product {
   _id: string;
@@ -1018,12 +1014,20 @@ export default function PDVPage() {
                               
                               <div className="space-y-2">
                                 <Label>Valor do Pagamento</Label>
-                                <Input
-                                  type="number"
-                                  step="0.01"
+                                <NumericFormat
                                   value={paymentForm.amount}
-                                  onChange={(e) => setPaymentForm({ ...paymentForm, receivedAmount: Number(e.target.value), amount: Number(e.target.value) })}
-                                  className="h-12 md:h-10"
+                                  onValueChange={({ floatValue }) => setPaymentForm((prev) => ({
+                                    ...prev,
+                                    amount: floatValue || 0,
+                                    receivedAmount: floatValue || 0,
+                                  }))}
+                                  thousandSeparator="."
+                                  decimalSeparator=","
+                                  prefix="R$ "
+                                  decimalScale={2}
+                                  fixedDecimalScale
+                                  allowNegative={false}
+                                  className="h-12 md:h-10 w-full p-2 border rounded-md"
                                 />
                                 <p className="text-xs text-gray-500">
                                   Restante: {formatCurrency(getTotal() - paymentMethods.reduce((sum, p) => sum + p.amount, 0))}

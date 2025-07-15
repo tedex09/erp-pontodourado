@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import connectMongo from '@/lib/mongodb';
-import { Sale, Product, Customer, Fiado } from '@/lib/models';
+import { Sale, Product, Customer, Fiado, CashRegister } from '@/lib/models';
 
 export async function GET(req: NextRequest) {
   try {

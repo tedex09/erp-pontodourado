@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from '@/components/ui/label';
 import { Plus, Search, Edit, AlertTriangle, Trash2, Package } from 'lucide-react';
 import { showToast } from '@/components/ui/toast';
+import { NumericFormat } from 'react-number-format';
 
 interface Product {
   _id: string;
@@ -354,25 +355,40 @@ export default function ProductsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="costPrice">Preço de Custo</Label>
-                  <Input
+                  <NumericFormat
                     id="costPrice"
-                    type="number"
-                    step="0.01"
                     value={formData.costPrice}
-                    onChange={(e) => handleCostPriceChange(Number(e.target.value))}
-                    required
+                    onValueChange={({ floatValue }) => {
+                      handleCostPriceChange(floatValue || 0);
+                    }}
+                    thousandSeparator="."
+                    decimalSeparator=","
+                    prefix="R$ "
+                    decimalScale={2}
+                    fixedDecimalScale
+                    allowNegative={false}
+                    className="w-full p-2 border rounded-md"
+                    onFocus={(e) => e.target.select()}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="salePrice">Preço de Venda</Label>
-                  <Input
+                  <NumericFormat
                     id="salePrice"
-                    type="number"
-                    step="0.01"
                     value={formData.salePrice}
-                    onChange={(e) => handleSalePriceChange(Number(e.target.value))}
-                    required
+                    onValueChange={({ floatValue }) => {
+                      setFormData(prev => ({ ...prev, salePrice: floatValue || 0 }));
+                    }}
+                    thousandSeparator="."
+                    decimalSeparator=","
+                    prefix="R$ "
+                    decimalScale={2}
+                    fixedDecimalScale
+                    allowNegative={false}
+                    className="w-full p-2 border rounded-md"
+                    onFocus={(e) => e.target.select()}
                   />
+
                 </div>
               </div>
               
