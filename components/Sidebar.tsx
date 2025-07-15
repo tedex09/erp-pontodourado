@@ -27,7 +27,7 @@ const navigation = [
   { name: 'Categorias', href: '/categories', icon: Store, roles: ['admin'] },
   { name: 'Estoque', href: '/inventory', icon: Store, roles: ['admin', 'estoque'] },
   { name: 'Fiados', href: '/fiados', icon: DollarSign, roles: ['admin', 'vendedor', 'caixa'] },
-  { name: 'Caixa', href: '/cash-management', icon: DollarSign, roles: ['admin', 'vendedor', 'caixa'] },
+  { name: 'Caixa', href: '/cash-management', icon: DollarSign, roles: ['admin'] },
   { name: 'Ponto', href: '/ponto', icon: Clock, roles: ['admin', 'vendedor', 'caixa', 'estoque'] },
   { name: 'Campanhas', href: '/campaigns', icon: Users, roles: ['admin', 'vendedor'] },
   { name: 'Funcionários', href: '/employees', icon: UserCheck, roles: ['admin'] },
@@ -56,6 +56,14 @@ export default function Sidebar() {
   const filteredNavigation = navigation.filter(item => 
     item.roles.includes(userRole)
   );
+
+  const isActiveRoute = (href: string) => {
+    if (href === '/' || href === '/admin-dashboard') {
+      // Dashboard should be active for both '/' and '/admin-dashboard'
+      return pathname === '/' || pathname === '/admin-dashboard';
+    }
+    return pathname === href;
+  };
   
   return (
     <div className="hidden md:flex md:flex-shrink-0 h-screen">
@@ -76,7 +84,7 @@ export default function Sidebar() {
           <div className="mt-12 flex-grow flex flex-col">
             <nav className="flex-1 px-2 space-y-1">
               {filteredNavigation.map((item) => {
-                const isActive = pathname === item.href;
+                const isActive = isActiveRoute(item.href);
                 return (
                   <Link
                     key={item.name}
