@@ -6,7 +6,6 @@ import { useSession, signOut } from 'next-auth/react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useThemeStore } from '@/store/useThemeStore';
 import { useEffect, useState } from 'react';
 import {
   Home,
@@ -22,6 +21,8 @@ import {
   UserCheck,
   LogOut,
   Brain,
+  CreditCard,
+  FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -29,18 +30,18 @@ const navigation = [
   { name: 'Dashboard', href: '/', icon: Home, roles: ['admin', 'vendedor', 'caixa', 'estoque'] },
   { name: 'PDV', href: '/pdv', icon: ShoppingCart, roles: ['admin', 'vendedor', 'caixa'] },
   { name: 'Clientes', href: '/customers', icon: Users, roles: ['admin', 'vendedor'] },
-  { name: 'Produtos', href: '/products', icon: Package, roles: ['admin'] },
+  { name: 'Produtos', href: '/products', icon: Package, roles: ['admin', 'vendedor', 'estoque'] },
   { name: 'Categorias', href: '/categories', icon: Store, roles: ['admin'] },
   { name: 'Estoque', href: '/inventory', icon: Store, roles: ['admin', 'estoque'] },
-  { name: 'Fiados', href: '/fiados', icon: DollarSign, roles: ['admin', 'vendedor', 'caixa'] },
-  { name: 'Fluxo de Caixa', href: '/cash-management', icon: DollarSign, roles: ['admin'] },
-  { name: 'Ponto', href: '/ponto', icon: Clock, roles: ['vendedor', 'caixa', 'estoque'] },
+  { name: 'Fiados', href: '/fiados', icon: CreditCard, roles: ['admin', 'vendedor', 'caixa'] },
+  { name: 'Caixa', href: '/cash-management', icon: DollarSign, roles: ['admin', 'vendedor', 'caixa'] },
+  { name: 'Ponto', href: '/ponto', icon: Clock, roles: ['admin', 'vendedor', 'caixa', 'estoque'] },
   { name: 'Campanhas', href: '/campaigns', icon: Users, roles: ['admin', 'vendedor'] },
   { name: 'Funcionários', href: '/employees', icon: UserCheck, roles: ['admin'] },
-  { name: 'Folha Pagamento', href: '/payroll', icon: DollarSign, roles: ['admin'] },
+  { name: 'Folha Pagamento', href: '/payroll', icon: FileText, roles: ['admin'] },
   { name: 'Funções', href: '/roles', icon: UserCheck, roles: ['admin'] },
   { name: 'Relatórios', href: '/reports', icon: BarChart3, roles: ['admin'] },
-   { name: 'Análise Inteligente', href: '/analytics', icon: Brain, roles: ['admin'] },
+  { name: 'Análise Inteligente', href: '/analytics', icon: Brain, roles: ['admin'] },
   { name: 'Configurações', href: '/settings', icon: Settings, roles: ['admin'] },
 ];
 
@@ -146,14 +147,31 @@ export function MobileBottomNav() {
 
 export function MobileHeader() {
   const { data: session } = useSession();
-  const { companyName } = useThemeStore();
+  const [companyName, setCompanyName] = useState('Ponto Dourado');
   const [logo, setLogo] = useState<string>('');
   
   useEffect(() => {
-    const savedLogo = localStorage.getItem('company-logo');
-    if (savedLogo) {
-      setLogo(savedLogo);
-    }
+    const loadThemeSettings = async () => {
+      try {
+        const response = await fetch('/api/theme-settings');
+        if (response.ok) {
+          const settings = await response.json();
+          setCompanyName(settings.companyName);
+          setLogo(settings.logo || '');
+        }
+      } catch (error) {
+        console.error('Error loading theme settings:', error);
+        // Fallback to localStorage
+        const cached = localStorage.getItem('theme-settings');
+        if (cached) {
+          const settings = JSON.parse(cached);
+          setCompanyName(settings.companyName);
+          setLogo(settings.logo || '');
+        }
+      }
+    };
+
+    loadThemeSettings();
   }, []);
   
   return (
@@ -163,11 +181,9 @@ export function MobileHeader() {
           {logo ? (
             <img src={logo} alt={companyName} className="h-6 w-auto max-w-32" />
           ) : (
-            <>
-              <span className="text-lg font-semibold text-gray-900">
-                {companyName}
-              </span>
-            </>
+            <span className="text-lg font-semibold text-gray-900">
+              {companyName}
+            </span>
           )}
         </div>
         

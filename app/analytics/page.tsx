@@ -170,7 +170,7 @@ export default function AnalyticsPage() {
         showToast.error('Erro ao registrar ação');
       }
     } catch (error) {
-      console.error('Error marking action:', error);
+      console.error('Erro ao processar ação:', error);
       showToast.error('Erro ao processar ação');
     }
   };
@@ -193,13 +193,13 @@ export default function AnalyticsPage() {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'critical':
+      case 'crítico':
         return 'bg-red-100 text-red-800 border-red-200';
-      case 'high':
+      case 'alto':
         return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 'medium':
+      case 'médio':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'low':
+      case 'baixo':
         return 'bg-blue-100 text-blue-800 border-blue-200';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
@@ -208,13 +208,13 @@ export default function AnalyticsPage() {
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
-      case 'opportunity':
+      case 'oportunidade':
         return <Lightbulb className="h-4 w-4" />;
-      case 'alert':
+      case 'alerta':
         return <AlertTriangle className="h-4 w-4" />;
-      case 'recommendation':
+      case 'recomendação':
         return <Target className="h-4 w-4" />;
-      case 'achievement':
+      case 'conquista':
         return <Star className="h-4 w-4" />;
       default:
         return <Brain className="h-4 w-4" />;
@@ -223,15 +223,15 @@ export default function AnalyticsPage() {
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'product':
+      case 'produto':
         return <Package className="h-5 w-5" />;
-      case 'customer':
+      case 'cliente':
         return <Users className="h-5 w-5" />;
-      case 'employee':
+      case 'funcionário':
         return <UserX className="h-5 w-5" />;
-      case 'schedule':
+      case 'planejar':
         return <Clock className="h-5 w-5" />;
-      case 'inventory':
+      case 'estoque':
         return <Package className="h-5 w-5" />;
       default:
         return <BarChart3 className="h-5 w-5" />;
@@ -542,7 +542,7 @@ export default function AnalyticsPage() {
                         e.stopPropagation();
                         markActionTaken(insight._id);
                       }}>
-                        Ação
+                        Resolver
                       </Button>
                     )}
                   </div>

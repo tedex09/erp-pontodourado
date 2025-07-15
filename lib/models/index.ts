@@ -18,6 +18,7 @@ import CommissionSettings from './CommissionSettings';
 import PayrollEntry from './PayrollEntry';
 import Insight from './Insight';
 import AnalyticsSettings from './AnalyticsSettings';
+import ThemeSettings from './ThemeSettings';
 
 // Export all models to ensure they are registered
 export {
@@ -40,6 +41,7 @@ export {
   PayrollEntry,
   Insight,
   AnalyticsSettings,
+  ThemeSettings,
 };
 
 // Function to ensure all models are registered
@@ -66,5 +68,6 @@ export function registerModels() {
     PayrollEntry,
     Insight,
     AnalyticsSettings,
+    ThemeSettings,
   };
 }

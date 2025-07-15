@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Plus, Search, Edit, AlertTriangle } from 'lucide-react';
+import { Plus, Search, Edit, AlertTriangle, Trash2, Package } from 'lucide-react';
 import { showToast } from '@/components/ui/toast';
 
 interface Product {
@@ -39,10 +39,15 @@ export default function ProductsPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showDialog, setShowDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [loading, setLoading] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const itemsPerPage = 12;
   
   const [formData, setFormData] = useState({
     name: '',
@@ -59,14 +64,20 @@ export default function ProductsPage() {
   useEffect(() => {
     fetchProducts();
     fetchCategories();
-  }, []);
+  }, [currentPage, searchTerm]);
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch('/api/products');
+      const params = new URLSearchParams();
+      if (searchTerm) params.append('search', searchTerm);
+      params.append('page', currentPage.toString());
+      params.append('limit', itemsPerPage.toString());
+
+      const response = await fetch(`/api/products?${params.toString()}`);
       if (response.ok) {
         const data = await response.json();
-        setProducts(data);
+        setProducts(data.products || data);
+        setTotalPages(data.totalPages || Math.ceil((data.length || 0) / itemsPerPage));
       }
     } catch (error) {
       showToast.error('Erro ao carregar produtos');
@@ -86,20 +97,8 @@ export default function ProductsPage() {
   };
 
   const searchProducts = async () => {
-    if (!searchTerm.trim()) {
-      fetchProducts();
-      return;
-    }
-    
-    try {
-      const response = await fetch(`/api/products?search=${encodeURIComponent(searchTerm)}`);
-      if (response.ok) {
-        const data = await response.json();
-        setProducts(data);
-      }
-    } catch (error) {
-      showToast.error('Erro ao buscar produtos');
-    }
+    setCurrentPage(1);
+    fetchProducts();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -155,6 +154,31 @@ export default function ProductsPage() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!productToDelete) return;
+    
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/products/${productToDelete._id}`, {
+        method: 'DELETE',
+      });
+      
+      if (response.ok) {
+        showToast.success('Produto excluído com sucesso');
+        setShowDeleteDialog(false);
+        setProductToDelete(null);
+        fetchProducts();
+      } else {
+        const error = await response.json();
+        showToast.error(error.error || 'Erro ao excluir produto');
+      }
+    } catch (error) {
+      showToast.error('Erro ao excluir produto');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       name: '',
@@ -186,6 +210,11 @@ export default function ProductsPage() {
     });
     setImagePreview(product.image || '');
     setShowDialog(true);
+  };
+
+  const handleDeleteClick = (product: Product) => {
+    setProductToDelete(product);
+    setShowDeleteDialog(true);
   };
 
   const handleCategoryChange = (categoryId: string) => {
@@ -242,8 +271,8 @@ export default function ProductsPage() {
       reader.readAsDataURL(file);
     }
   };
-
-  const margin = formData.costPrice > 0 ? ((formData.salePrice - formData.costPrice) / formData.costPrice) * 100 : 0;
+  
+  const margin = formData.salePrice > 0 ? (1 - (formData.costPrice / formData.salePrice)) * 100 : 0;
 
   return (
     <div className="space-y-6">
@@ -470,21 +499,109 @@ export default function ProductsPage() {
                     </div>
                   </div>
                   
-                  <Button
-                    onClick={() => handleEdit(product)}
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                  >
-                    <Edit className="mr-2 h-4 w-4" />
-                    Editar
-                  </Button>
+                  <div className="flex space-x-2">
+                    <Button
+                      onClick={() => handleEdit(product)}
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                    >
+                      <Edit className="mr-2 h-4 w-4" />
+                      Editar
+                    </Button>
+                    <Button
+                      onClick={() => handleDeleteClick(product)}
+                      variant="outline"
+                      size="sm"
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}
           </div>
+
+          {/* Paginação */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center space-x-2 mt-6">
+              <Button
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                variant="outline"
+                size="sm"
+              >
+                Anterior
+              </Button>
+              
+              <div className="flex items-center space-x-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <Button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    variant={currentPage === page ? "default" : "outline"}
+                    size="sm"
+                    className="w-10"
+                  >
+                    {page}
+                  </Button>
+                ))}
+              </div>
+              
+              <Button
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                variant="outline"
+                size="sm"
+              >
+                Próximo
+              </Button>
+            </div>
+          )}
+
+          {products.length === 0 && (
+            <div className="text-center py-8">
+              <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-500">Nenhum produto encontrado</p>
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmar Exclusão</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p>Tem certeza que deseja excluir o produto <strong>{productToDelete?.name}</strong>?</p>
+            <p className="text-sm text-gray-500">Esta ação não pode ser desfeita.</p>
+            
+            <div className="flex space-x-2">
+              <Button
+                onClick={handleDelete}
+                disabled={loading}
+                variant="destructive"
+                className="flex-1"
+              >
+                {loading ? 'Excluindo...' : 'Sim, Excluir'}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowDeleteDialog(false);
+                  setProductToDelete(null);
+                }}
+                className="flex-1"
+              >
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
