@@ -100,7 +100,8 @@ export function PWAInstallPrompt() {
   };
 
   // Não mostrar se já está instalado ou foi dispensado nesta sessão
-  if (isInstalled || sessionStorage.getItem('pwa-prompt-dismissed')) {
+  /* if (isInstalled || sessionStorage.getItem('pwa-prompt-dismissed')) { */
+  if (isInstalled) {
     return null;
   }
 

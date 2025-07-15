@@ -23,7 +23,17 @@ export async function GET(req: NextRequest) {
           pix: { enabled: true, fee: 0, feeType: 'percentage' },
           pixQrCode: { enabled: true, fee: 0.99, feeType: 'percentage', feeResponsibility: 'customer' },
           debitoCard: { enabled: true, fee: 1.99, feeType: 'percentage', feeResponsibility: 'customer' },
-          creditoCard: { enabled: true, fee: 3.09, feeType: 'percentage', feeResponsibility: 'customer' },
+          creditoCard: { 
+            enabled: true, 
+            fee: 3.09, 
+            feeType: 'percentage', 
+            feeResponsibility: 'customer',
+            installments: [
+              { parcelas: 1, taxa: 3.09 },
+              { parcelas: 2, taxa: 4.5 },
+              { parcelas: 3, taxa: 6.0 }
+            ]
+          },
           fiado: { enabled: true },
         },
       });
@@ -48,21 +58,52 @@ export async function PUT(req: NextRequest) {
     
     const data = await req.json();
     
+    // Deep clone and properly format the data
+    const formattedData = JSON.parse(JSON.stringify(data));
+    
+    // Ensure installments are properly handled with validation
+    if (formattedData.methods?.creditoCard?.installments) {
+      formattedData.methods.creditoCard.installments = formattedData.methods.creditoCard.installments
+        .filter((inst: any) => inst && typeof inst === 'object')
+        .map((inst: any) => ({
+          parcelas: Number(inst.parcelas) || 1,
+          taxa: Number(inst.taxa) || 0
+        }));
+    }
+    
     let settings = await PaymentSettings.findOne();
     
     if (!settings) {
       settings = new PaymentSettings({
-        ...data,
+        ...formattedData,
         updatedBy: session.user.id,
       });
     } else {
-      Object.assign(settings, data);
+      // Properly merge the data
+      settings.methods = {
+        ...settings.methods,
+        ...formattedData.methods
+      };
       settings.updatedBy = session.user.id;
+      
+      // Explicitly mark nested paths as modified for Mongoose
+      if (formattedData.methods) {
+        settings.markModified('methods');
+        if (formattedData.methods.creditoCard) {
+          settings.markModified('methods.creditoCard');
+          if (formattedData.methods.creditoCard.installments) {
+            settings.markModified('methods.creditoCard.installments');
+          }
+        }
+      }
     }
     
     await settings.save();
     
-    return NextResponse.json(settings);
+    // Fetch the saved data to ensure it was persisted correctly
+    const savedSettings = await PaymentSettings.findById(settings._id);
+    
+    return NextResponse.json(savedSettings);
   } catch (error) {
     console.error('Update payment settings error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

@@ -22,6 +22,10 @@ export interface IPaymentSettings {
       fee: number; 
       feeType: 'percentage' | 'fixed';
       feeResponsibility: 'customer' | 'store';
+      installments?: Array<{
+        parcelas: number;
+        taxa: number;
+      }>;
     };
     fiado: { enabled: boolean };
   };
@@ -56,7 +60,18 @@ const paymentSettingsSchema = new mongoose.Schema<IPaymentSettings>(
         enabled: { type: Boolean, default: true },
         fee: { type: Number, default: 3.09 },
         feeType: { type: String, enum: ['percentage', 'fixed'], default: 'percentage' },
-        feeResponsibility: { type: String, enum: ['customer', 'store'], default: 'customer' }
+        feeResponsibility: { type: String, enum: ['customer', 'store'], default: 'customer' },
+        installments: {
+          type: [{
+            parcelas: { type: Number, required: true, min: 1 },
+            taxa: { type: Number, required: true, min: 0 }
+          }],
+          default: [
+            { parcelas: 1, taxa: 3.09 },
+            { parcelas: 2, taxa: 4.5 },
+            { parcelas: 3, taxa: 6.0 }
+          ]
+        }
       },
       fiado: {
         enabled: { type: Boolean, default: true }
@@ -70,7 +85,18 @@ const paymentSettingsSchema = new mongoose.Schema<IPaymentSettings>(
   },
   {
     timestamps: true,
+    minimize: false,
+    strict: false
   }
 );
+
+// Add pre-save middleware to ensure installments are properly saved
+paymentSettingsSchema.pre('save', function(next) {
+  // Ensure installments array is properly marked as modified
+  if (this.isModified('methods.creditoCard.installments') || this.isNew) {
+    this.markModified('methods.creditoCard.installments');
+  }
+  next();
+});
 
 export default mongoose.models.PaymentSettings || mongoose.model<IPaymentSettings>('PaymentSettings', paymentSettingsSchema);

@@ -247,11 +247,26 @@ export default function SettingsPage() {
           );
           break;
         case 'payments':
+          // Ensure installments are properly formatted before sending
+          const paymentData = {
+            ...paymentSettings,
+            methods: {
+              ...paymentSettings.methods,
+              creditoCard: {
+                ...paymentSettings.methods.creditoCard,
+                installments: (paymentSettings.methods.creditoCard.installments || []).map(inst => ({
+                  parcelas: Number(inst.parcelas),
+                  taxa: Number(inst.taxa)
+                }))
+              }
+            }
+          };
+          
           promises.push(
             fetch('/api/payment-settings', {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(paymentSettings),
+              body: JSON.stringify(paymentData),
             })
           );
           break;
@@ -280,6 +295,13 @@ export default function SettingsPage() {
 
       if (allSuccessful) {
         showToast.success('Configurações salvas com sucesso');
+        
+        // For payment settings, refresh the data to ensure UI reflects saved state
+        if (activeTab === 'payments') {
+          const response = responses[0];
+          const updatedSettings = await response.json();
+          setPaymentSettings(updatedSettings);
+        }
         
         // Reload theme if theme settings were saved
         if (activeTab === 'theme') {
@@ -323,7 +345,8 @@ export default function SettingsPage() {
   };
 
   const addInstallment = () => {
-    const newParcelas = (paymentSettings.methods.creditoCard.installments?.length || 0) + 1;
+    const currentInstallments = paymentSettings.methods.creditoCard.installments || [];
+    const newParcelas = currentInstallments.length + 1;
     const newInstallment = { parcelas: newParcelas, taxa: 3.09 };
     
     setPaymentSettings(prev => ({
@@ -332,7 +355,7 @@ export default function SettingsPage() {
         ...prev.methods,
         creditoCard: {
           ...prev.methods.creditoCard,
-          installments: [...(prev.methods.creditoCard.installments || []), newInstallment]
+          installments: [...currentInstallments, newInstallment]
         }
       }
     }));
@@ -345,7 +368,7 @@ export default function SettingsPage() {
         ...prev.methods,
         creditoCard: {
           ...prev.methods.creditoCard,
-          installments: prev.methods.creditoCard.installments?.filter((_, i) => i !== index) || []
+          installments: (prev.methods.creditoCard.installments || []).filter((_, i) => i !== index)
         }
       }
     }));
@@ -358,13 +381,14 @@ export default function SettingsPage() {
         ...prev.methods,
         creditoCard: {
           ...prev.methods.creditoCard,
-          installments: prev.methods.creditoCard.installments?.map((item, i) => 
-            i === index ? { ...item, [field]: value } : item
-          ) || []
+          installments: (prev.methods.creditoCard.installments || []).map((item, i) => 
+            i === index ? { ...item, [field]: Number(value) || (field === 'parcelas' ? 1 : 0) } : item
+          )
         }
       }
     }));
   };
+  
 
   return (
     <div className="space-y-6">
@@ -585,7 +609,7 @@ export default function SettingsPage() {
                     </div>
                     
                     <div className="space-y-3">
-                      {paymentSettings.methods.creditoCard.installments?.map((installment, index) => (
+                      {(paymentSettings.methods.creditoCard.installments || []).map((installment, index) => (
                         <div key={index} className="flex items-center space-x-4 p-3 bg-gray-50 rounded-lg">
                           <div className="flex-1">
                             <Label>Parcelas</Label>
@@ -593,7 +617,7 @@ export default function SettingsPage() {
                               type="number"
                               min="1"
                               value={installment.parcelas}
-                              onChange={(e) => updateInstallment(index, 'parcelas', Number(e.target.value))}
+                              onChange={(e) => updateInstallment(index, 'parcelas', parseInt(e.target.value) || 1)}
                             />
                           </div>
                           <div className="flex-1">
@@ -601,8 +625,9 @@ export default function SettingsPage() {
                             <Input
                               type="number"
                               step="0.01"
+                              min="0"
                               value={installment.taxa}
-                              onChange={(e) => updateInstallment(index, 'taxa', Number(e.target.value))}
+                              onChange={(e) => updateInstallment(index, 'taxa', parseFloat(e.target.value)|| 0)}
                             />
                           </div>
                           <Button

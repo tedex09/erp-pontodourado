@@ -464,6 +464,11 @@ export default function PDVPage() {
   const change = calculateChange();
   const totalChange = getTotalChange();
 
+  const totalPaid = paymentMethods.reduce((sum, p) => sum + p.amount, 0);
+  const total = getTotal();
+  const isPaymentEnough = Number(totalPaid.toFixed(2)) >= Number(total.toFixed(2));
+
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Mobile Header */}
@@ -1082,7 +1087,7 @@ export default function PDVPage() {
                       
                       <Button
                         onClick={completeSale}
-                        disabled={loading || cart.length === 0 || paymentMethods.reduce((sum, p) => sum + p.amount, 0) < getTotal()}
+                        disabled={loading || cart.length === 0 || !isPaymentEnough}
                         className="w-full bg-green-600 hover:bg-green-700 h-12 md:h-10 touch-button"
                       >
                         <CreditCard className="mr-2 h-4 w-4" />
@@ -1600,7 +1605,7 @@ export default function PDVPage() {
                     
                     <Button
                       onClick={completeSale}
-                      disabled={loading || cart.length === 0 || paymentMethods.reduce((sum, p) => sum + p.amount, 0) < getTotal()}
+                      disabled={loading || cart.length === 0 || !isPaymentEnough}
                       className="w-full bg-green-600 hover:bg-green-700 h-14 text-lg font-semibold"
                     >
                       <CreditCard className="mr-2 h-5 w-5" />
