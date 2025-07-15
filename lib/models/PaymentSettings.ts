@@ -22,10 +22,6 @@ export interface IPaymentSettings {
       fee: number; 
       feeType: 'percentage' | 'fixed';
       feeResponsibility: 'customer' | 'store';
-      installments: Array<{
-        parcelas: number;
-        taxa: number;
-      }>;
     };
     fiado: { enabled: boolean };
   };
@@ -60,11 +56,7 @@ const paymentSettingsSchema = new mongoose.Schema<IPaymentSettings>(
         enabled: { type: Boolean, default: true },
         fee: { type: Number, default: 3.09 },
         feeType: { type: String, enum: ['percentage', 'fixed'], default: 'percentage' },
-        feeResponsibility: { type: String, enum: ['customer', 'store'], default: 'customer' },
-        installments: [{
-          parcelas: { type: Number, required: true, min: 1 },
-          taxa: { type: Number, required: true, min: 0 }
-        }]
+        feeResponsibility: { type: String, enum: ['customer', 'store'], default: 'customer' }
       },
       fiado: {
         enabled: { type: Boolean, default: true }
@@ -80,17 +72,5 @@ const paymentSettingsSchema = new mongoose.Schema<IPaymentSettings>(
     timestamps: true,
   }
 );
-
-// Middleware para garantir que as parcelas sejam salvas corretamente
-paymentSettingsSchema.pre('save', function(next) {
-  // Garantir que installments seja um array válido
-  if (this.methods.creditoCard.installments && !Array.isArray(this.methods.creditoCard.installments)) {
-    this.methods.creditoCard.installments = [];
-  }
-  
-  // Marcar o campo como modificado para garantir que seja salvo
-  this.markModified('methods.creditoCard.installments');
-  next();
-});
 
 export default mongoose.models.PaymentSettings || mongoose.model<IPaymentSettings>('PaymentSettings', paymentSettingsSchema);

@@ -5,6 +5,7 @@ import { Inter } from 'next/font/google';
 import { SessionProvider } from 'next-auth/react';
 import { Toaster } from 'react-hot-toast';
 import Layout from '@/components/Layout';
+import { PWAInstallPrompt } from '@/components/PWAInstallPrompt';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -26,6 +27,7 @@ export default function RootLayout({
           <Layout>
             {children}
           </Layout>
+          <PWAInstallPrompt />
           <Toaster position="top-right" />
         </SessionProvider>
       </body>
